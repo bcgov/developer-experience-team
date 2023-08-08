@@ -6,19 +6,20 @@ on:
     paths:
       - "DevExMobileTestApp/**"
    
-defaults:
-  run:
-    working-directory: DevExMobileTestApp      
-
 jobs:
   build-android:
     name: Build and sign android bundle
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: DevExMobileTestApp          
+
     env:
       KEYSTORE_FILE: android/app/release.keystore
 
     steps:
+      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
       - name: Checkout
         uses: actions/checkout@v3
 
@@ -27,6 +28,7 @@ jobs:
         with:
             cache: 'yarn'
             node-version: 19
+            cache-dependency-path: DevExMobileTestApp/yarn.json
 
       - name: Install node modules
         run: |
@@ -34,6 +36,8 @@ jobs:
 
       - name: Setup Gradle 
         uses: gradle/gradle-build-action@v2
+        with:
+          build-root-directory: DevExMobileTestApp
 
       - name: Decode keystore file
         env:
@@ -54,13 +58,17 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
             name: android-release
-            path: android/app/build/outputs/bundle/release/app-release.aab
+            path: DevExMobileTestApp/android/app/build/outputs/bundle/release/app-release.aab
             if-no-files-found: error
             retention-days: 5
 
   build-ios:
     name: Build and sign ios
     runs-on: macos-latest
+
+    defaults:
+      run:
+        working-directory: DevExMobileTestApp/ios    
 
     env:
       PROJECT: ${{ 'DevExMobileTestApp.xcworkspace' }}
@@ -81,7 +89,7 @@ jobs:
       - name: Cache Pods
         uses: actions/cache@v3
         with:
-          path: ios/Pods
+          path: DevExMobileTestApp/ios/Pods
           key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
           restore-keys: |
             ${{ runner.os }}-pods-   
@@ -91,14 +99,14 @@ jobs:
         with:
             cache: 'yarn'
             node-version: 19
+            cache-dependency-path: DevExMobileTestApp/package-lock.json
 
       - name: Install node modules
-        working-directory: ./
+        working-directory: DevExMobileTestApp
         run: |
           yarn install --frozen-lockfile
 
       - name: CocoaPod Install
-        working-directory: ios/
         run: pod install 
 
       # from https://docs.github.com/en/enterprise-cloud@latest/actions/deployment/deploying-xcode-applications/installing-an-apple-certificate-on-macos-runners-for-xcode-development
@@ -132,7 +140,6 @@ jobs:
           cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles    
     
       - name: Increment Build No.
-        working-directory: ios/
         env:
           BUILD_NO: ${{ github.run_number }}
         run: |
@@ -140,7 +147,6 @@ jobs:
           agvtool new-version -all ${BUILD_NO}
 
       - name: Build For Release
-        working-directory: ios/
         run: |
           xcodebuild \
           -workspace $PROJECT \
@@ -152,7 +158,6 @@ jobs:
           archive
 
       - name: Export Archive 
-        working-directory: ios/
         run: |
           xcodebuild \
           -exportArchive \
@@ -165,6 +170,6 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ios-release
-          path: ios/${{ env.EXPORT_DIR }}
+          path: DevExMobileTestApp/ios/${{ env.EXPORT_DIR }}
           if-no-files-found: error
           retention-days: 5
