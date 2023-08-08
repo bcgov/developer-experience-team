@@ -1,7 +1,7 @@
 # developer-experience-techdocs-experimental
 Temporary testing repo for backstage techdocs. 
 
-Currently contains markdown files with mermaid diagrams. These files were taken from existing bcgov projects. They are here in order to experiment on.
+Currently contains markdown files with mermaid diagrams. These files were taken from existing bcgov projects. This is for jira ticket DEVEX-495. They are here in order to experiment on.
 
 The files are from:
 
