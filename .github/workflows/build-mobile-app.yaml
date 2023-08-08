@@ -19,7 +19,6 @@ jobs:
       KEYSTORE_FILE: android/app/release.keystore
 
     steps:
-      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
       - name: Checkout
         uses: actions/checkout@v3
 
