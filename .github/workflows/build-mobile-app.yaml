@@ -27,7 +27,7 @@ jobs:
         with:
             cache: 'yarn'
             node-version: 19
-            cache-dependency-path: DevExMobileTestApp/yarn.json
+            cache-dependency-path: DevExMobileTestApp/yarn.lock
 
       - name: Install node modules
         run: |
@@ -98,7 +98,7 @@ jobs:
         with:
             cache: 'yarn'
             node-version: 19
-            cache-dependency-path: DevExMobileTestApp/package-lock.json
+            cache-dependency-path: DevExMobileTestApp/yarn.lock
 
       - name: Install node modules
         working-directory: DevExMobileTestApp
