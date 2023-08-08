@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>teamID</key>
+	<string>L796QSLV3E</string>
+	<key>method</key>
+	<string>app-store</string>
+	<key>signingStyle</key>
+	<string>manual</string>
+	<key>provisioningProfiles</key>
+	<dict>
+		<key>ca.bc.gov.DevExMobileTestApp</key>
+		<string>799a9408-175d-433b-bc52-ead034cab416</string>
+	</dict>
+</dict>
+</plist>

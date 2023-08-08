@@ -1,0 +1,12 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: "devex-techdocs-experiment"
+  description: "A guide to application development for the Government of the Province of British Columbia"
+  annotations:
+    github.com/project-slug: bcgov/developer-experience-techdocs-experimental
+    backstage.io/techdocs-ref: dir:.
+spec:
+  type: documentation
+  lifecycle: production
+  owner: "citz"
