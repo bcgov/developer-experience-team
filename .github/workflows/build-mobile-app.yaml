@@ -5,15 +5,14 @@ on:
     paths:
       - "DevExMobileTestApp/**"
    
+defaults:
+  run:
+    working-directory: DevExMobileTestApp      
+
 jobs:
   build-android:
     name: Build and sign android bundle
     runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        shell: bash
-        working-directory: DevExMobileTestApp
 
     env:
       KEYSTORE_FILE: android/app/release.keystore
@@ -61,11 +60,6 @@ jobs:
   build-ios:
     name: Build and sign ios
     runs-on: macos-latest
-
-    defaults:
-      run:
-        shell: bash
-        working-directory: DevExMobileTestApp
 
     env:
       PROJECT: ${{ 'DevExMobileTestApp.xcworkspace' }}
