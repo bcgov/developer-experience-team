@@ -51,12 +51,18 @@ jobs:
         run: |
           echo "${UPLOAD_KEYSTORE}" | base64 -d > ${KEYSTORE_FILE}
 
+      - name: run number with offset
+        env:
+          NUM: ${{ github.run_number }}
+        run: |
+          echo "GITHUB_RUN_NUMBER_WITH_OFFSET=$(($NUM + $env.VERSION_NUM_OFFSET))" >> $GITHUB_ENV
+
       - name: Sign app 
         env:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
           ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
-          VERSION_CODE: $(( ${{ github.run_number }} + ${{ env.VERSION_NUM_OFFSET }}))
+          VERSION_CODE: ${{ env.GITHUB_RUN_NUMBER_WITH_OFFSET }}
         run: |
             npx react-native build-android --mode=release
        
@@ -145,9 +151,14 @@ jobs:
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles    
     
+      - name: run number with offset
+        env:
+          NUM: ${{ github.run_number }}
+        run: |
+          echo "GITHUB_RUN_NUMBER_WITH_OFFSET=$(($NUM + $env.VERSION_NUM_OFFSET))" >> $GITHUB_ENV    
       - name: Increment Build No.
         env:
-          BUILD_NO: $((${{ github.run_number }} + ${{ env.VERSION_NUM_OFFSET }}))
+          BUILD_NO: ${{ env.VGITHUB_RUN_NUMBER_WITH_OFFSET }}
         run: |
           # Set Build Number. Not worrying about storing to repo.
           agvtool new-version -all ${BUILD_NO}
