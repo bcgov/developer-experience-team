@@ -55,7 +55,7 @@ jobs:
         env:
           NUM: ${{ github.run_number }}
         run: |
-          echo "GITHUB_RUN_NUMBER_WITH_OFFSET=$(($NUM + $env.VERSION_NUM_OFFSET))" >> $GITHUB_ENV
+          echo "GITHUB_RUN_NUMBER_WITH_OFFSET=$(($NUM + $VERSION_NUM_OFFSET))" >> $GITHUB_ENV
 
       - name: Sign app 
         env:
@@ -155,10 +155,10 @@ jobs:
         env:
           NUM: ${{ github.run_number }}
         run: |
-          echo "GITHUB_RUN_NUMBER_WITH_OFFSET=$(($NUM + $env.VERSION_NUM_OFFSET))" >> $GITHUB_ENV    
+          echo "GITHUB_RUN_NUMBER_WITH_OFFSET=$(($NUM + $VERSION_NUM_OFFSET))" >> $GITHUB_ENV    
       - name: Increment Build No.
         env:
-          BUILD_NO: ${{ env.VGITHUB_RUN_NUMBER_WITH_OFFSET }}
+          BUILD_NO: ${{ env.GITHUB_RUN_NUMBER_WITH_OFFSET }}
         run: |
           # Set Build Number. Not worrying about storing to repo.
           agvtool new-version -all ${BUILD_NO}
