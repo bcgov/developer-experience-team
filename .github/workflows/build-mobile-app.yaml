@@ -5,8 +5,15 @@ on:
     branches: [ main ]
     paths:
       - "DevExMobileTestApp/**"
-   
+
+env: 
+  # The build number is based on github.run_number. However, the build number used by the app
+  # is already higher than that number. It throws an error because the number has already been used
+  # So, the number has too be offset past that value
+  VERSION_NUM_OFFSET: 10
+
 jobs:
+
   build-android:
     name: Build and sign android bundle
     runs-on: ubuntu-latest
@@ -49,7 +56,7 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
           ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
-          VERSION_CODE: ${{ github.run_number }}
+          VERSION_CODE: $(( ${{ github.run_number }} + ${{ env.VERSION_NUM_OFFSET }}))
         run: |
             npx react-native build-android --mode=release
        
@@ -140,7 +147,7 @@ jobs:
     
       - name: Increment Build No.
         env:
-          BUILD_NO: ${{ github.run_number }}
+          BUILD_NO: $((${{ github.run_number }} + ${{ env.VERSION_NUM_OFFSET }}))
         run: |
           # Set Build Number. Not worrying about storing to repo.
           agvtool new-version -all ${BUILD_NO}
