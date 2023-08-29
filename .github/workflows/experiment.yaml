@@ -1,0 +1,38 @@
+name: Build Mobile App
+on: 
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - "experiment/**"
+
+jobs:
+
+  create-issue:
+    name: Create issue
+    runs-on: ubuntu-latest
+
+        
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    
+    - name: Did file change?
+      id: changed-file
+      uses: tj-actions/changed-files@v38
+      with:
+        files: experiment/README.md
+    
+    - name: Set PR Number
+      if: steps.changed-file.outputs.any_changed == 'true'
+      id: pr_number
+      run: echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+
+    - name: Create issue if changed file
+      if: steps.changed-file.outputs.any_changed == 'true'
+      run: gh issue create --title "Update file" --body "The file changed with PR \#$PR_NUMBER. Update the other file to reflect the changes." --assignee MonicaG
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
