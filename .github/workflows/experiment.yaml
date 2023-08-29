@@ -1,8 +1,8 @@
-name: Build Mobile App
+name: Create issue on changed file
 on: 
-  workflow_dispatch:
-  push:
-    branches: [ main ]
+  pull_request:
+    branches: [ "main" ]
+    types: [opened]
     paths:
       - "experiment/**"
 
