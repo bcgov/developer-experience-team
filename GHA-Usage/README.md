@@ -33,11 +33,11 @@ available options:
 # Same as '-d' but will also display workflow run details
 -dd
 
-# Same as '-d' but will processing a series of repos from a json file
+# Same as '-d' but will process a series of repos from a json file
 -f <file name>
 ```
 
-Using the "-f" option allows for batch process of a series of repos from a file in json format. For example:
+Using the "-f" option allows for batch processing of a series of repos from a file in json format. For example:
 ```
 [
     "repo-1",
