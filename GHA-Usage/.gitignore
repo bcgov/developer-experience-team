@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# Logs
+logs
+*.log
+
+# Node version directives
+.nvmrc
+
+# vscode workspace
+*.code-workspace
+
+# git
+.git
+
+/node_modules
+/results
+repo-list.json
