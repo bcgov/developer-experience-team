@@ -33,7 +33,7 @@ available options:
 # Same as '-d' but will also display workflow run details
 -dd
 
-# Same as '-d' but will process a series of repos from a json file
+# Same as '-d' but will processing a series of repos from a json file
 -f <file name>
 ```
 
