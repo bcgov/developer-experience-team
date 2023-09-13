@@ -2,13 +2,14 @@
 This is a JavaScript app for querying the GitHub API via octokit and providing data on workflow usage for repos belonging to the bcgov organization.
 
 ### Getting Started
-install:
+**install**:
 ```
 # using npm
 npm install
 ```
+Next add a GitHub Personal access token to app.js  
 
-invoke:
+**invoke**:
 ```
 node app.js <options>
 ```
@@ -35,6 +36,12 @@ available options:
 
 # Same as '-d' but will process a series of repos from a json file
 -f <file name>
+
+# Display Organization info for bcgov-c
+-c
+
+# Display repo & user info for bcgov-c as csv
+-u
 ```
 
 Using the "-f" option allows for batch processing of a series of repos from a file in json format. For example:
