@@ -31,9 +31,6 @@ available options:
 # Display workflow details for specified repo between specified dates
 -d <repo name> 2023-05-15 2023-08-14
 
-# Same as '-d' but will also display workflow run details
--dd
-
 # Same as '-d' but will process a series of repos from a json file
 -f <file name>
 
@@ -42,6 +39,9 @@ available options:
 
 # Display repo & user info for bcgov-c as csv
 -u
+
+# Display current GitHub API rate limit
+-r
 ```
 
 Using the "-f" option allows for batch processing of a series of repos from a file in json format. For example:

@@ -50,25 +50,12 @@ const getJobTime = async (repoName, run_id) => {
 
 /*
  * getRepoDetails: takes a repo name and displays details about successful workflow runs, it can also take start and end dates.
- * the function outputs workflow run data as well as results from the jobs associated with each workflow run.
- * This is largely for comparison purposes as job details are more accurate but require more API calls.
+ * the function outputs workflow run data from the jobs associated with each run id.
  */
-const getRepoDetails = async (repoName, startDate = null, endDate = null, showRunDetails = false) => {
+const getRepoDetails = async (repoName, startDate = null, endDate = null, isBatch = false) => {
   let dateStr = undefined;
   if (startDate && endDate)
     dateStr = startDate + ".." + endDate;
-
-  const runSuccessData = await octokit.request(`GET /repos/${org}/${repoName}/actions/runs`, {
-    org: org,
-    repo: repoName,
-    status: 'success',
-    created: dateStr,
-    headers: headers,
-  });
-  
-  let totalTimeRan = 0;
-  let totalJobTimeRan = 0;
-  let runCounter = 0;
 
   const iter = octokit.paginate.iterator(`GET /repos/${org}/${repoName}/actions/runs`, {
     org: org,
@@ -79,41 +66,26 @@ const getRepoDetails = async (repoName, startDate = null, endDate = null, showRu
     headers: headers
   });
 
+  if (!isBatch)
+    console.log("repo-name, time-span, action-name, job-minutes, started-at, event");
+
+  console.log(repoName + ", " + (dateStr || "all time") + ", , , ,");
   for await (const { data: runs } of iter) {
     for (const r of runs) {
-      runCounter++;
-      let createTime = new Date(Date.parse(r.created_at));
-
       let jobTime = await getJobTime(repoName, r.id);
-      totalJobTimeRan += jobTime;
-
-      if (showRunDetails)
-        console.log(r.name + ", " + roundToTwo(jobTime / 1000 / 60) + ", " + r.created_at);
-
-      let completeTime = new Date(Date.parse(r.updated_at));
-      let timeRan = completeTime - createTime;
-
-      if (isNaN(timeRan))
-        timeRan = 0;
-
-      totalTimeRan += timeRan;
+      console.log(", , " + r.name + ", " + roundToTwo(jobTime / 1000 / 60) + ", " + r.run_started_at + ", " + r.event);
     }
   }
-
-  totalTimeRan = roundToTwo(totalTimeRan / 1000 / 60);
-  totalJobTimeRan = roundToTwo(totalJobTimeRan / 1000 / 60);
-
-  if (startDate === null) {
-    startDate = 'creation';
-    endDate = 'today';
-  }
-
-  console.log('---');
-  console.log(repoName + ` - Successful run count from ${startDate} - ${endDate}: ${runCounter}`);
-  console.log(repoName + ` - Job time (min) from ${startDate} - ${endDate}: ${totalJobTimeRan}`);
-  console.log(repoName + " - Successful workflow run count: " + runSuccessData.data.total_count);
-  console.log(repoName + " - Workflow run time (min): " + totalTimeRan);
 };
+
+/*
+ * getDetailsBatch: a wrapper function that takes a list of repos and displays details for each.
+ */
+const getDetailsBatch = async (RepoList, rangeStart, RangeEnd) => {
+  console.log("repo-name, time-span, action-name, job-minutes, started-at, event");
+  for (const r of RepoList)
+    await getRepoDetails(r, rangeStart, RangeEnd, true);
+}
 
 /*
  * getOrgData: takes an organization name and displays related info
@@ -162,14 +134,6 @@ const getAllUsageData = async (startDate = null, endDate = null) => {
     }
   }
 };
-
-/*
- * getDetailsBatch: a wrapper function that takes a list of repos and displays details for each.
- */
-const getDetailsBatch = async (RepoList, rangeStart, RangeEnd) => {
-  for (const r of RepoList)
-    await getRepoDetails(r, rangeStart, RangeEnd);
-}
 
 /*
  * getAllUserData: takes an organization name and displays repo, admin, and user info as a csv
@@ -239,17 +203,32 @@ const getAllUserData = async (orgName) => {
   }
 };
 
+/*
+ * getRateLimit: Displays the rate limit status for the authenticated user
+ */
+const getRateLimit = async () => {
+  const limitData = await octokit.request('GET /rate_limit', {
+    headers: headers,
+  });
+
+  let resetTime = new Date(limitData.data.rate.reset * 1000);
+  console.log("Limit: " + limitData.data.rate.limit);
+  console.log("Used: " + limitData.data.rate.used);
+  console.log("Remaining: " + limitData.data.rate.remaining);
+  console.log("Reset: " + resetTime.toString());
+}
+
 function displayAppUsage() {
   console.log("usage:");
   console.log("\t -o -- Display Organization info for bcgov");
   console.log("\t -a -- Display all repo workflow usage as csv");
   console.log("\t -a 2023-05-15 2023-08-14 -- Display all repo workflow usage between specified dates as csv");
-  console.log("\t -d <repo name> -- Display workflow details for specified repo");
+  console.log("\t -d <repo name> -- Display workflow details for specified repo as csv");
   console.log("\t -d <repo name> 2023-05-15 2023-08-14 -- Display workflow details for specified repo between specified dates");
-  console.log("\t -dd -- Same as '-d' but will also display workflow run details");
   console.log("\t -f <file name> -- Same as '-d' but will process a series of repos from a json file");
   console.log("\t -c -- Display Organization info for bcgov-c");
-  console.log("\t -u -- Display repo & user info for bcgov-c as csv\n");
+  console.log("\t -u -- Display repo & user info for bcgov-c as csv");
+  console.log("\t -r -- Display current API rate limit\n");
 }
 
 if (process.argv.length === 2) {
@@ -261,8 +240,8 @@ if (process.argv[2] && process.argv[2] === '-o') {
   getOrgData(org);
 } else if (process.argv[2] && process.argv[2] === '-a') {
   getAllUsageData(process.argv[3], process.argv[4]);
-} else if (process.argv[2] && (process.argv[2] === '-d' || process.argv[2] === '-dd') && process.argv[3]) {
-  getRepoDetails(process.argv[3], process.argv[4], process.argv[5], (process.argv[2] === '-dd'));
+} else if (process.argv[2] && process.argv[2] === '-d' && process.argv[3]) {
+  getRepoDetails(process.argv[3], process.argv[4], process.argv[5]);
 } else if (process.argv[2] && process.argv[2] === '-f' && process.argv[3]) {
   fs.readFile(process.argv[3], 'utf8', (err, data) => {
     getDetailsBatch(JSON.parse(data), process.argv[4], process.argv[5])
@@ -271,6 +250,8 @@ if (process.argv[2] && process.argv[2] === '-o') {
   getOrgData(orgc);
 } else if (process.argv[2] && process.argv[2] === '-u') {
   getAllUserData(orgc);
+} else if (process.argv[2] && process.argv[2] === '-r') {
+  getRateLimit();
 } else {
   displayAppUsage();
 }
