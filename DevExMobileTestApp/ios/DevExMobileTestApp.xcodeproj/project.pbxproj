@@ -543,7 +543,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = ca.bc.gov.DevExMobileTestApp;
 				PRODUCT_NAME = DevExMobileTestApp;
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "Developer Experience Mobile Test App";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "Developer Experience Mobile Test App - 2023/24";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
 			};
