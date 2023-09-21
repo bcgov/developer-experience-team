@@ -73,7 +73,7 @@ const getRepoDetails = async (repoName, startDate = null, endDate = null, isBatc
   for await (const { data: runs } of iter) {
     for (const r of runs) {
       let jobTime = await getJobTime(repoName, r.id);
-      console.log(", , " + r.name + ", " + roundToTwo(jobTime / 1000 / 60) + ", " + r.run_started_at + ", " + r.event);
+      console.log(", , " + r.name.replaceAll(',', ' ') + ", " + roundToTwo(jobTime / 1000 / 60) + ", " + r.run_started_at + ", " + r.event);
     }
   }
 };
