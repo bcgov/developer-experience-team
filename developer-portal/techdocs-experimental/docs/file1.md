@@ -1,3 +1,16 @@
+---
+title: Emergency Management BC - Evacuee Registration and Assistance (ERA)
+
+slug: emergency-management
+
+audience: developer
+
+author: Fred Flintstone
+
+content_owner: Wilma Flintstone
+
+sort_order: 5
+---
 # Emergency Management BC - Evacuee Registration and Assistance (ERA)
 
 A system to manage evacuees registrations and support provisioning for residents of the province of British Columbia
