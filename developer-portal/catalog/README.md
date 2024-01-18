@@ -22,6 +22,8 @@ After removing the wrong entry and the title still was not updated, we did the f
 * Restarted deployment on OpenShift (scale pod to 0, and then backup)
 * Entity showed up as expected
 
+Note: It may take several minutes (I've noticed 20 minutes but could be more) for a change to be picked up. So after making the change, wait to see if it is picked up. Refer to [The Life of an Entity](https://backstage.io/docs/features/software-catalog/life-of-an-entity) about the steps an entity goes through to be processed.
+
 #### Notes
 
 If you encounter this scenario and the above does not work, the following maybe helpful:
