@@ -13,3 +13,4 @@ spec:
         - https://github.com/bcgov/inclusive-names-service/blob/main/catalog-info.yaml
         - https://github.com/bcgov/public-cloud-techdocs/blob/dev/catalog-info.yaml
         - https://github.com/bcgov/architect-for-bcgov/blob/main/catalog-info.yml
+        - https://github.com/bcgov/aps-infra-platform/blob/test/catalog-info.yaml
