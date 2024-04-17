@@ -24,6 +24,15 @@ After removing the wrong entry and the title still was not updated, we did the f
 
 Note: It may take several minutes (I've noticed 20 minutes but could be more) for a change to be picked up. So after making the change, wait to see if it is picked up. Refer to [The Life of an Entity](https://backstage.io/docs/features/software-catalog/life-of-an-entity) about the steps an entity goes through to be processed.
 
+
+#### Scenario
+
+One of the techdoc guides disappeared from the 'docs' page after it's `catalog.yaml` file location was updated in the `catalog-seed-*.yml` file.
+
+#### Resolution
+
+Scheduled an 'entity refresh' through the catalog page. On the catalog page, chose `Location` under the `Kind` drop down box. In the `seed` location entry, clicked the "Schedule entity refresh" button.
+
 #### Notes
 
 If you encounter this scenario and the above does not work, the following maybe helpful:
