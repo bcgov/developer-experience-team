@@ -5,6 +5,7 @@ metadata:
 spec:
     type: url
     targets:
+        - https://github.com/bcgov/platform-developer-docs/blob/main/catalog-info.yaml
         - http://github.com/bcgov/mobile-developer-guide/blob/main/catalog-info.yaml
         - http://github.com/bcgov/bcdg/blob/main/catalog-info.yaml
         - https://github.com/bcgov/inclusive-names-service/blob/main/catalog-info.yaml
