@@ -1,1 +1,0 @@
-The [mkdocs.py](mkdocs.py) file was moved to the [private-cloud-techdocs repo](https://github.com/bcgov/private-cloud-techdocs)
