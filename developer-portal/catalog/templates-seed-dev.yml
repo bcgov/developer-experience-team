@@ -7,3 +7,4 @@ spec:
     targets:
         - https://github.com/bcgov/devhub-templates/tree/DEVX1355-add-license-step/software-templates/techdocs-template/template.yaml
         - https://github.com/bcgov/devhub-templates/tree/DEVX1355-add-license-step/software-templates/techdocs-template-pr/template.yaml
+        - https://github.com/bcgov/devhub-templates/blob/DEVX-1354/software-templates/migrate-repo-to-enterprise/template.yaml
