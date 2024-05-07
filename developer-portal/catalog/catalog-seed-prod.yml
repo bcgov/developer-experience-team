@@ -14,3 +14,5 @@ spec:
         - https://github.com/bcgov/public-cloud-techdocs/blob/main/catalog-info.yaml
         - https://github.com/bcgov/common-hosted-form-service-techdocs/blob/main/catalog-info.yml
         - https://github.com/bcgov/common-object-management-service-docs/blob/main/catalog-info.yaml
+        - https://github.com/bcgov/citz-imb-sso-react/blob/main/catalog-info.yaml
+        - https://github.com/bcgov/citz-imb-sso-express/blob/main/catalog-info.yaml
