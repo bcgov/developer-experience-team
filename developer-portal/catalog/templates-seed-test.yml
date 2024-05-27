@@ -8,3 +8,4 @@ spec:
         - https://github.com/bcgov/devhub-templates/blob/main/software-templates/techdocs-template/template.yaml
         - https://github.com/bcgov/devhub-templates/blob/main/software-templates/techdocs-template-pr/template.yaml
         - https://github.com/bcgov/devhub-templates/blob/main/software-templates/migrate-repo-to-enterprise/template.yaml
+        - https://github.com/bcgov/devhub-templates/tree/DEVX-yaml-fragments-tmp/software-templates/techdocs-template/template.yaml
