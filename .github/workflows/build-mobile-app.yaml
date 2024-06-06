@@ -188,10 +188,30 @@ jobs:
           -exportOptionsPlist exportOptions.plist \
           -verbose
       
-      - name: Upload a Build Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: ios-release
-          path: DevExMobileTestApp/ios/${{ env.EXPORT_DIR }}
-          if-no-files-found: error
-          retention-days: 5
+      # - name: Upload a Build Artifact
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: ios-release
+      #     path: DevExMobileTestApp/ios/${{ env.EXPORT_DIR }}
+      #     if-no-files-found: error
+      #     retention-days: 5
+
+      - name: Setup JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4
+        env:
+         JF_URL: ${{ secrets.ARTIFACTORY_URL }}
+         JF_ACCESS_TOKEN: ${{ secrets.ARTIFACTORY_ACCESS_TOKEN }}
+         JF_REPO_NAME: ${{ secrets.ARTIFACTORY_REPO_NAME }}
+
+
+      - name: Setup JFrog server  
+        run: |
+          export SERVER_ID="art"
+          jf c add $SERVER_ID --url=$JF_URL --access-token=$JF_ACCESS_TOKEN --interactive=false
+
+
+      - name: Push Build to Artifactory
+        env:
+          BUILD_NO: ${{ env.GITHUB_RUN_NUMBER_WITH_OFFSET }}
+        run: |
+          jf rt upload DevExMobileTestApp/ios/${{ env.EXPORT_DIR }} $JF_REPO_NAME --build-name $IPA_NAME --build-number $BUILD_NO
