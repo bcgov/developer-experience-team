@@ -201,7 +201,7 @@ jobs:
         env:
          JF_URL: ${{ secrets.ARTIFACTORY_URL }}
          JF_ACCESS_TOKEN: ${{ secrets.ARTIFACTORY_ACCESS_TOKEN }}
-         JF_REPO_NAME: ${{ secrets.ARTIFACTORY_REPO_NAME }}
+         JF_REPO_NAME: ${{ vars.ARTIFACTORY_REPO_NAME }}
 
 
       - name: Setup JFrog server  
@@ -214,4 +214,4 @@ jobs:
         env:
           BUILD_NO: ${{ env.GITHUB_RUN_NUMBER_WITH_OFFSET }}
         run: |
-          jf rt upload DevExMobileTestApp/ios/${{ env.EXPORT_DIR }}/ ${{ env.JF_REPO_NAME }}
+          jf rt upload DevExMobileTestApp/ios/${{ env.EXPORT_DIR }}/ $JF_REPO_NAME
