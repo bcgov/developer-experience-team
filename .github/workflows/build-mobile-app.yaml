@@ -214,4 +214,4 @@ jobs:
         env:
           BUILD_NO: ${{ env.GITHUB_RUN_NUMBER_WITH_OFFSET }}
         run: |
-          jf rt upload DevExMobileTestApp/ios/${{ env.EXPORT_DIR }} $JF_REPO_NAME --build-name $IPA_NAME --build-number $BUILD_NO
+          jf rt upload DevExMobileTestApp/ios/${{ env.EXPORT_DIR }}/ $JF_REPO_NAME --build-name=$IPA_NAME --build-number=$BUILD_NO
