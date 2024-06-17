@@ -214,4 +214,4 @@ jobs:
           BUILD_NO: ${{ env.GITHUB_RUN_NUMBER_WITH_OFFSET }}
         run: |
           echo "repo : $JF_REPO_NAME"
-          jf rt upload  $env.EXPORT_DIR $JF_REPO_NAME
+          jf rt upload $EXPORT_DIR $JF_REPO_NAME
