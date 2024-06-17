@@ -89,6 +89,9 @@ jobs:
       ARCHIVE_NAME:  ${{ 'DevExMobileTestApp.xcarchive' }}
       EXPORT_DIR: ${{ 'export' }}
       IPA_NAME: ${{ 'DevExMobileTestApp.ipa' }}
+      JF_URL: ${{ secrets.ARTIFACTORY_URL }}
+      JF_ACCESS_TOKEN: ${{ secrets.ARTIFACTORY_ACCESS_TOKEN }}
+      JF_REPO_NAME: ${{ vars.ARTIFACTORY_REPO_NAME }}
     
     steps:
       - name: Checkout
@@ -198,10 +201,6 @@ jobs:
 
       - name: Setup JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
-        env:
-         JF_URL: ${{ secrets.ARTIFACTORY_URL }}
-         JF_ACCESS_TOKEN: ${{ secrets.ARTIFACTORY_ACCESS_TOKEN }}
-         JF_REPO_NAME: ${{ vars.ARTIFACTORY_REPO_NAME }}
 
 
       - name: Setup JFrog server  
