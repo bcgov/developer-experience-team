@@ -14,65 +14,65 @@ env:
 
 jobs:
 
-  build-android:
-    name: Build and sign android bundle
-    runs-on: ubuntu-latest
+  # build-android:
+  #   name: Build and sign android bundle
+  #   runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: DevExMobileTestApp          
+  #   defaults:
+  #     run:
+  #       working-directory: DevExMobileTestApp          
 
-    env:
-      KEYSTORE_FILE: android/app/release.keystore
+  #   env:
+  #     KEYSTORE_FILE: android/app/release.keystore
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v3
 
-      - name: Setup Node.js environment
-        uses: actions/setup-node@v3 
-        with:
-            cache: 'yarn'
-            node-version: 19
-            cache-dependency-path: DevExMobileTestApp/yarn.lock
+  #     - name: Setup Node.js environment
+  #       uses: actions/setup-node@v3 
+  #       with:
+  #           cache: 'yarn'
+  #           node-version: 19
+  #           cache-dependency-path: DevExMobileTestApp/yarn.lock
 
-      - name: Install node modules
-        run: |
-          yarn install --frozen-lockfile
+  #     - name: Install node modules
+  #       run: |
+  #         yarn install --frozen-lockfile
 
-      - name: Setup Gradle 
-        uses: gradle/gradle-build-action@v2
-        with:
-          build-root-directory: DevExMobileTestApp
+  #     - name: Setup Gradle 
+  #       uses: gradle/gradle-build-action@v2
+  #       with:
+  #         build-root-directory: DevExMobileTestApp
 
-      - name: Decode keystore file
-        env:
-          UPLOAD_KEYSTORE: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
-        run: |
-          echo "${UPLOAD_KEYSTORE}" | base64 -d > ${KEYSTORE_FILE}
+  #     - name: Decode keystore file
+  #       env:
+  #         UPLOAD_KEYSTORE: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+  #       run: |
+  #         echo "${UPLOAD_KEYSTORE}" | base64 -d > ${KEYSTORE_FILE}
 
-      - name: run number with offset
-        env:
-          NUM: ${{ github.run_number }}
-        run: |
-          echo "GITHUB_RUN_NUMBER_WITH_OFFSET=$(($NUM + $VERSION_NUM_OFFSET))" >> $GITHUB_ENV
+  #     - name: run number with offset
+  #       env:
+  #         NUM: ${{ github.run_number }}
+  #       run: |
+  #         echo "GITHUB_RUN_NUMBER_WITH_OFFSET=$(($NUM + $VERSION_NUM_OFFSET))" >> $GITHUB_ENV
 
-      - name: Sign app 
-        env:
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
-          ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
-          VERSION_CODE: ${{ env.GITHUB_RUN_NUMBER_WITH_OFFSET }}
-        run: |
-            npx react-native build-android --mode=release
+  #     - name: Sign app 
+  #       env:
+  #         ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+  #         ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
+  #         ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
+  #         VERSION_CODE: ${{ env.GITHUB_RUN_NUMBER_WITH_OFFSET }}
+  #       run: |
+  #           npx react-native build-android --mode=release
        
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v3
-        with:
-            name: android-release
-            path: DevExMobileTestApp/android/app/build/outputs/bundle/release/app-release.aab
-            if-no-files-found: error
-            retention-days: 5
+  #     - name: Upload Artifact
+  #       uses: actions/upload-artifact@v3
+  #       with:
+  #           name: android-release
+  #           path: DevExMobileTestApp/android/app/build/outputs/bundle/release/app-release.aab
+  #           if-no-files-found: error
+  #           retention-days: 5
 
   build-ios:
     name: Build and sign ios
@@ -216,6 +216,8 @@ jobs:
         run: |
           export JFROG_CLI_LOG_LEVEL=DEBUG
           echo "repo : $JF_REPO_NAME"
-          echo "test file " > $EXPORT_DIR/test.txt
+          mkdir $EXPORT_DIR
+          cd $EXPORT_DIR
+          echo "test file " > test.txt
           jf c s
           jf rt upload $EXPORT_DIR $JF_REPO_NAME
