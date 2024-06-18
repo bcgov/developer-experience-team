@@ -219,5 +219,7 @@ jobs:
           mkdir $EXPORT_DIR
           cd $EXPORT_DIR
           echo "test file " > test.txt
+          pwd
+          ls
           jf c s
           jf rt upload $EXPORT_DIR $JF_REPO_NAME
