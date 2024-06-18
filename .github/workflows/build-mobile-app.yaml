@@ -205,6 +205,7 @@ jobs:
 
       - name: Setup JFrog server  
         run: |
+          export JFROG_CLI_LOG_LEVEL=DEBUG
           export SERVER_ID="art"
           jf c add $SERVER_ID --url=$JF_URL --access-token=$JF_ACCESS_TOKEN --interactive=false
 
@@ -213,5 +214,6 @@ jobs:
         env:
           BUILD_NO: ${{ env.GITHUB_RUN_NUMBER_WITH_OFFSET }}
         run: |
+          export JFROG_CLI_LOG_LEVEL=DEBUG
           echo "repo : $JF_REPO_NAME"
           jf rt upload $EXPORT_DIR $JF_REPO_NAME
