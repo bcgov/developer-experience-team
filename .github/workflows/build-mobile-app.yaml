@@ -217,9 +217,9 @@ jobs:
           export JFROG_CLI_LOG_LEVEL=DEBUG
           echo "repo : $JF_REPO_NAME"
           mkdir $EXPORT_DIR
-          cd $EXPORT_DIR
-          echo "test file " > test.txt
+          echo "test file " > $EXPORT_DIR/test.txt
           pwd
           ls
+          ls $EXPORT_DIR
           jf c s
           jf rt upload $EXPORT_DIR $JF_REPO_NAME
