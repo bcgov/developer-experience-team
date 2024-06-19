@@ -92,6 +92,8 @@ jobs:
       JF_URL: ${{ secrets.ARTIFACTORY_URL }}
       JF_ACCESS_TOKEN: ${{ secrets.ARTIFACTORY_ACCESS_TOKEN }}
       JF_REPO_NAME: ${{ vars.ARTIFACTORY_REPO_NAME }}
+      JF_USER: ${{ secrets.ARTIFACTORY_SERVICE_ACCOUNT_USER }}
+      JF_PWD: ${{ secrets.ARTIFACTORY_SERVICE_ACCOUNT_PWD }}
     
     steps:
       - name: Checkout
@@ -207,7 +209,7 @@ jobs:
         run: |
           export JFROG_CLI_LOG_LEVEL=DEBUG
           export SERVER_ID="art"
-          jf c add $SERVER_ID --url=$JF_URL --access-token=$JF_ACCESS_TOKEN --interactive=false
+          jf c add $SERVER_ID --url=$JF_URL --user=$JF_USER --password=$JF_PWD --interactive=false
 
 
       - name: Push Build to Artifactory
