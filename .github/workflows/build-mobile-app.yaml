@@ -217,6 +217,9 @@ jobs:
       #     # jf c add $SERVER_ID --url=$JF_URL --user=$JF_USER --password=$JF_PWD --interactive=false
 
 
+      - run: |
+          jf rt ping
+          
       - name: Push Build to Artifactory
         env:
           BUILD_NO: ${{ env.GITHUB_RUN_NUMBER_WITH_OFFSET }}
