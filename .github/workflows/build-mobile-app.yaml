@@ -228,4 +228,4 @@ jobs:
           echo "repo : $JF_REPO_NAME"
           pwd
           ls
-          jf rt upload DevExMobileTestApp mobile-devex-team-test
+          jf rt upload DevExMobileTestApp/* mobile-devex-team-test
