@@ -89,143 +89,116 @@ jobs:
       ARCHIVE_NAME:  ${{ 'DevExMobileTestApp.xcarchive' }}
       EXPORT_DIR: ${{ 'export' }}
       IPA_NAME: ${{ 'DevExMobileTestApp.ipa' }}
-      JF_URL: ${{ secrets.ARTIFACTORY_URL }}
-      # JF_ACCESS_TOKEN: ${{ secrets.ARTIFACTORY_ACCESS_TOKEN }}
       JF_REPO_NAME: ${{ vars.ARTIFACTORY_REPO_NAME }}
-      JF_USER: ${{ secrets.ARTIFACTORY_SERVICE_ACCOUNT_USER }}
-      JF_PWD: ${{ secrets.ARTIFACTORY_SERVICE_ACCOUNT_PWD }}
     
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
-      # - name: Setup Xcode version
-      #   uses: maxim-lobanov/setup-xcode@v1.6.0
-      #   with:
-      #     xcode-version: '15.2'
+      - name: Setup Xcode version
+        uses: maxim-lobanov/setup-xcode@v1.6.0
+        with:
+          xcode-version: '15.2'
       
-      # - name: Display XCode Path for debug
-      #   run: |
-      #     xcode-select -p  
+      - name: Display XCode Path for debug
+        run: |
+          xcode-select -p  
 
-      # - name: Cache Pods
-      #   uses: actions/cache@v3
-      #   with:
-      #     path: DevExMobileTestApp/ios/Pods
-      #     key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
-      #     restore-keys: |
-      #       ${{ runner.os }}-pods-   
+      - name: Cache Pods
+        uses: actions/cache@v3
+        with:
+          path: DevExMobileTestApp/ios/Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-   
           
-      # - name: Setup Node.js environment
-      #   uses: actions/setup-node@v3 
-      #   with:
-      #       cache: 'yarn'
-      #       node-version: 19
-      #       cache-dependency-path: DevExMobileTestApp/yarn.lock
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v3 
+        with:
+            cache: 'yarn'
+            node-version: 19
+            cache-dependency-path: DevExMobileTestApp/yarn.lock
 
-      # - name: Install node modules
-      #   working-directory: DevExMobileTestApp
-      #   run: |
-      #     yarn install --frozen-lockfile
+      - name: Install node modules
+        working-directory: DevExMobileTestApp
+        run: |
+          yarn install --frozen-lockfile
 
-      # - name: CocoaPod Install
-      #   run: pod install 
+      - name: CocoaPod Install
+        run: pod install 
 
-      # # from https://docs.github.com/en/enterprise-cloud@latest/actions/deployment/deploying-xcode-applications/installing-an-apple-certificate-on-macos-runners-for-xcode-development
-      # - name: Install the Apple certificate and provisioning profile
-      #   env:
-      #     BUILD_CERTIFICATE_BASE64: ${{ secrets.APPLE_APP_STORE_BUILD_CERTIFICATE_BASE64 }}
-      #     P12_PASSWORD: ${{ secrets.APPLE_APP_STORE_BUILD_CERTIFICATE_PASSWD }}
-      #     BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
-      #     KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-      #   run: |
-      #     # create variables
-      #     CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
-      #     PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
-      #     KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+      # from https://docs.github.com/en/enterprise-cloud@latest/actions/deployment/deploying-xcode-applications/installing-an-apple-certificate-on-macos-runners-for-xcode-development
+      - name: Install the Apple certificate and provisioning profile
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.APPLE_APP_STORE_BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.APPLE_APP_STORE_BUILD_CERTIFICATE_PASSWD }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          # create variables
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
 
-      #     # import certificate and provisioning profile from secrets
-      #     echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
-      #     echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+          # import certificate and provisioning profile from secrets
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+          echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
 
-      #     # create temporary keychain
-      #     security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-      #     security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-      #     security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          # create temporary keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
 
-      #     # import certificate to keychain
-      #     security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-      #     security list-keychain -d user -s $KEYCHAIN_PATH
+          # import certificate to keychain
+          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
 
-      #     # apply provisioning profile
-      #     mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-      #     cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles    
+          # apply provisioning profile
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles    
     
-      # - name: run number with offset
-      #   env:
-      #     NUM: ${{ github.run_number }}
-      #   run: |
-      #     echo "GITHUB_RUN_NUMBER_WITH_OFFSET=$(($NUM + $VERSION_NUM_OFFSET))" >> $GITHUB_ENV    
-      # - name: Increment Build No.
-      #   env:
-      #     BUILD_NO: ${{ env.GITHUB_RUN_NUMBER_WITH_OFFSET }}
-      #   run: |
-      #     # Set Build Number. Not worrying about storing to repo.
-      #     agvtool new-version -all ${BUILD_NO}
-
-      # - name: Build For Release
-      #   run: |
-      #     xcodebuild \
-      #     -workspace $PROJECT \
-      #     -scheme $SCHEME \
-      #     -configuration Release \
-      #     -sdk iphoneos \
-      #     -derivedDataPath $DATA_DIR \
-      #     -archivePath ${DATA_DIR}/${ARCHIVE_NAME} \
-      #     archive
-
-      # - name: Export Archive 
-      #   run: |
-      #     xcodebuild \
-      #     -exportArchive \
-      #     -archivePath ${DATA_DIR}/${ARCHIVE_NAME} \
-      #     -exportPath $EXPORT_DIR \
-      #     -exportOptionsPlist exportOptions.plist \
-      #     -verbose
-      
-      # - name: Upload a Build Artifact
-      #   uses: actions/upload-artifact@v3
-      #   with:
-      #     name: ios-release
-      #     path: DevExMobileTestApp/ios/${{ env.EXPORT_DIR }}
-      #     if-no-files-found: error
-      #     retention-days: 5
-
-      - name: Setup JFrog CLI
-        uses: jfrog/setup-jfrog-cli@v4
-        env: 
-          JF_PROJECT: "apple-ent-mobile-apps"
-          JF_URL: ${{ secrets.ARTIFACTORY_URL }}
-          # Basic authentication credentials
-          JF_USER: ${{ secrets.ARTIFACTORY_SERVICE_ACCOUNT_USER  }}
-          JF_PASSWORD: ${{ secrets.ARTIFACTORY_SERVICE_ACCOUNT_PWD }}
-
-      # - name: Setup JFrog server  
-      #   run: |
-      #     export JFROG_CLI_LOG_LEVEL=DEBUG
-      #     # export SERVER_ID="art"
-      #     # jf c add $SERVER_ID --url=$JF_URL --user=$JF_USER --password=$JF_PWD --interactive=false
-
-
-      - run: |
-          jf rt ping
-
-      - name: Push Build to Artifactory
+      - name: run number with offset
+        env:
+          NUM: ${{ github.run_number }}
+        run: |
+          echo "GITHUB_RUN_NUMBER_WITH_OFFSET=$(($NUM + $VERSION_NUM_OFFSET))" >> $GITHUB_ENV    
+      - name: Increment Build No.
         env:
           BUILD_NO: ${{ env.GITHUB_RUN_NUMBER_WITH_OFFSET }}
         run: |
+          # Set Build Number. Not worrying about storing to repo.
+          agvtool new-version -all ${BUILD_NO}
+
+      - name: Build For Release
+        run: |
+          xcodebuild \
+          -workspace $PROJECT \
+          -scheme $SCHEME \
+          -configuration Release \
+          -sdk iphoneos \
+          -derivedDataPath $DATA_DIR \
+          -archivePath ${DATA_DIR}/${ARCHIVE_NAME} \
+          archive
+
+      - name: Export Archive 
+        run: |
+          xcodebuild \
+          -exportArchive \
+          -archivePath ${DATA_DIR}/${ARCHIVE_NAME} \
+          -exportPath $EXPORT_DIR \
+          -exportOptionsPlist exportOptions.plist \
+          -verbose
+      
+      - name: Setup JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4
+        env: 
+          JF_PROJECT: $JF_REPO_NAME
+          JF_URL: ${{ secrets.ARTIFACTORY_URL }}
+          JF_USER: ${{ secrets.ARTIFACTORY_SERVICE_ACCOUNT_USER  }}
+          JF_PASSWORD: ${{ secrets.ARTIFACTORY_SERVICE_ACCOUNT_PWD }}
+
+     
+      - name: Push Build to Artifactory
+        run: |
           export JFROG_CLI_LOG_LEVEL=DEBUG
-          echo "repo : $JF_REPO_NAME"
-          pwd
-          ls
-          jf rt upload "DevExMobileTestApp/*" mobile-devex-team-test
+          jf rt upload "$EXPORT_DIR/*" $JF_REPO_NAME
