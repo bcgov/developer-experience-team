@@ -203,13 +203,18 @@ jobs:
 
       - name: Setup JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
+        env: 
+          JF_PROJECT: "apple-ent-mobile-apps"
+          JF_URL: ${{ secrets.ARTIFACTORY_URL }}
+          # Basic authentication credentials
+          JF_USER: ${{ secrets.ARTIFACTORY_SERVICE_ACCOUNT_USER  }}
+          JF_PASSWORD: ${{ secrets.ARTIFACTORY_SERVICE_ACCOUNT_PWD }}
 
-
-      - name: Setup JFrog server  
-        run: |
-          export JFROG_CLI_LOG_LEVEL=DEBUG
-          export SERVER_ID="art"
-          jf c add $SERVER_ID --url=$JF_URL --user=$JF_USER --password=$JF_PWD --interactive=false
+      # - name: Setup JFrog server  
+      #   run: |
+      #     export JFROG_CLI_LOG_LEVEL=DEBUG
+      #     # export SERVER_ID="art"
+      #     # jf c add $SERVER_ID --url=$JF_URL --user=$JF_USER --password=$JF_PWD --interactive=false
 
 
       - name: Push Build to Artifactory
