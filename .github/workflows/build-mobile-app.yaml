@@ -11,7 +11,6 @@ env:
   # is already higher than that number. It throws an error because the number has already been used
   # So, the number has too be offset past that value
   VERSION_NUM_OFFSET: 10
-  JF_REPO_NAME: ${{ vars.ARTIFACTORY_REPO_NAME }}
 
 jobs:
 
@@ -78,12 +77,11 @@ jobs:
       - name: Setup JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
         env: 
-          JF_PROJECT: $JF_REPO_NAME
+          JF_PROJECT: ${{ vars.ARTIFACTORY_REPO_NAME }}
           JF_URL: ${{ vars.ARTIFACTORY_URL }}
           JF_USER: ${{ secrets.ARTIFACTORY_SERVICE_ACCOUNT_USER  }}
           JF_PASSWORD: ${{ secrets.ARTIFACTORY_SERVICE_ACCOUNT_PWD }}
 
-        
       - name: Push Build to Artifactory
         run: |
           export JFROG_CLI_LOG_LEVEL=DEBUG
@@ -214,7 +212,7 @@ jobs:
       - name: Setup JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
         env: 
-          JF_PROJECT: $JF_REPO_NAME
+          JF_PROJECT: ${{ vars.ARTIFACTORY_REPO_NAME }}
           JF_URL: ${{ vars.ARTIFACTORY_URL }}
           JF_USER: ${{ secrets.ARTIFACTORY_SERVICE_ACCOUNT_USER  }}
           JF_PASSWORD: ${{ secrets.ARTIFACTORY_SERVICE_ACCOUNT_PWD }}
