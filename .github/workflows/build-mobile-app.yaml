@@ -79,7 +79,7 @@ jobs:
         uses: jfrog/setup-jfrog-cli@v4
         env: 
           JF_PROJECT: $JF_REPO_NAME
-          JF_URL: ${{ secrets.ARTIFACTORY_URL }}
+          JF_URL: ${{ var.ARTIFACTORY_URL }}
           JF_USER: ${{ secrets.ARTIFACTORY_SERVICE_ACCOUNT_USER  }}
           JF_PASSWORD: ${{ secrets.ARTIFACTORY_SERVICE_ACCOUNT_PWD }}
 
@@ -88,7 +88,6 @@ jobs:
         run: |
           export JFROG_CLI_LOG_LEVEL=DEBUG
           jf rt upload android/app/build/outputs/bundle/release/app-release.aab $JF_REPO_NAME
-          rm $GITHUB_STEP_SUMMARY    
 
   build-ios:
     name: Build and sign ios
@@ -216,7 +215,7 @@ jobs:
         uses: jfrog/setup-jfrog-cli@v4
         env: 
           JF_PROJECT: $JF_REPO_NAME
-          JF_URL: ${{ secrets.ARTIFACTORY_URL }}
+          JF_URL: ${{ var.ARTIFACTORY_URL }}
           JF_USER: ${{ secrets.ARTIFACTORY_SERVICE_ACCOUNT_USER  }}
           JF_PASSWORD: ${{ secrets.ARTIFACTORY_SERVICE_ACCOUNT_PWD }}
 
@@ -225,5 +224,4 @@ jobs:
         run: |
           export JFROG_CLI_LOG_LEVEL=DEBUG
           jf rt upload "$EXPORT_DIR/*" $JF_REPO_NAME
-          rm $GITHUB_STEP_SUMMARY
 
