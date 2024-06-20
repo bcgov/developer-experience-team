@@ -88,6 +88,10 @@ jobs:
         run: |
           export JFROG_CLI_LOG_LEVEL=DEBUG
           jf rt upload android/app/build/outputs/bundle/release/app-release.aab $JF_REPO_NAME
+      
+      - name: Delete all summary content
+        run: |
+          rm $GITHUB_STEP_SUMMARY
 
   build-ios:
     name: Build and sign ios
@@ -224,3 +228,7 @@ jobs:
         run: |
           export JFROG_CLI_LOG_LEVEL=DEBUG
           jf rt upload "$EXPORT_DIR/*" $JF_REPO_NAME
+
+      - name: Delete all summary content
+        run: |
+          rm $GITHUB_STEP_SUMMARY
