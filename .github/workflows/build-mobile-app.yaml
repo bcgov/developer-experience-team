@@ -66,7 +66,15 @@ jobs:
           VERSION_CODE: ${{ env.GITHUB_RUN_NUMBER_WITH_OFFSET }}
         run: |
             npx react-native build-android --mode=release
-       
+      
+      # - name: Upload Artifact
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: android-release
+      #     path: DevExMobileTestApp/android/app/build/outputs/bundle/release/app-release.aab
+      #     if-no-files-found: error
+      #     retention-days: 5     
+
       - name: Setup JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
         env: 
@@ -195,6 +203,14 @@ jobs:
           -exportOptionsPlist exportOptions.plist \
           -verbose
       
+      # - name: Upload a Build Artifact
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: ios-release
+      #     path: DevExMobileTestApp/ios/${{ env.EXPORT_DIR }}
+      #     if-no-files-found: error
+      #     retention-days: 5
+
       - name: Setup JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
         env: 
