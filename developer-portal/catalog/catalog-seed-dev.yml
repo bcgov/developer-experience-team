@@ -20,3 +20,4 @@ spec:
         - https://github.com/bcgov/citz-imb-sso-css-api/blob/main/catalog-info.yaml
         - https://github.com/bcgov/devhub-techdocs-publish/blob/main/catalog-info.yml # don't need to promote to test or prod
         - https://github.com/bcgov/citz-imb-express-utilities/blob/main/catalog-info.yaml
+        - https://github.com/bcgov/devhub-ds-poc-storybook/blob/main/catalog-info.yaml # test docs for DS Storybook experiment
