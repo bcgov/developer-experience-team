@@ -1,0 +1,2 @@
+msgraph-sdk==1.4.0
+azure-identity==1.17.1
