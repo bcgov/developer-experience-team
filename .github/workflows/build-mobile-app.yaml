@@ -76,6 +76,8 @@ jobs:
 
       - name: Setup JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
+        with:
+          disable-job-summary: true
         env: 
           JF_PROJECT: ${{ vars.ARTIFACTORY_PROJECT }}
           JF_URL: ${{ vars.ARTIFACTORY_URL }}
@@ -211,6 +213,8 @@ jobs:
 
       - name: Setup JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
+        with:
+          disable-job-summary: true
         env: 
           JF_PROJECT: ${{ vars.ARTIFACTORY_PROJECT }}
           JF_URL: ${{ vars.ARTIFACTORY_URL }}
