@@ -1,0 +1,13 @@
+{
+	"name": "org_list",
+	"version": "1.0.0",
+	"description": "generate a listing of repos that might belong to BCGov",
+	"main": "app.js",
+	"author": "sheaphillips",
+	"license": "ASL",
+	"private": false,
+	"dependencies": {
+		"octokit": "^4.0.2"
+	},
+	"type": "module"
+}

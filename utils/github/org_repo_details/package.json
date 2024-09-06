@@ -1,0 +1,14 @@
+{
+  "name": "org_repo_details",
+  "version": "1.0.0",
+  "description": "Retrieve and capture details about an organizations's repositories.",
+  "main": "app.js",
+  "author": "sheaphillips",
+  "license": "Apache 2.0",
+  "dependencies": {
+    "@octokit/auth-app": "^7.1.0",
+    "@octokit/rest": "^21.0.1",
+    "csv-parse": "^5.5.6"
+  },
+  "type": "module"
+}
