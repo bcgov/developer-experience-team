@@ -21,3 +21,4 @@ spec:
         - https://github.com/bcgov/devhub-techdocs-publish/blob/main/catalog-info.yml # don't need to promote to test or prod
         - https://github.com/bcgov/citz-imb-express-utilities/blob/main/catalog-info.yaml
         - https://github.com/bcgov/DITP/blob/main/catalog-info.yaml
+        - https://github.com/bcgov/developer-portal/blob/main/catalog-info.yml # don't need to promote to test or prod
