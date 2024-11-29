@@ -16,6 +16,8 @@ A [GitHub fine grain access token](https://docs.github.com/en/authentication/kee
   - read access to metadata
   - write access to issues
 
+The user will need to have 'owner' permissions in the org in order to access the org's membership.
+
 Create an .env file with the following values:
 ```
 GITHUB_TOKEN=token
