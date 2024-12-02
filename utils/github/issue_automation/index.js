@@ -3,9 +3,23 @@ import { Octokit } from "@octokit/rest";
 import fs from "fs";
 import readline from "readline";
 import Mustache from "mustache";
-import { error } from "console";
+import winston from "winston";
+
 
 dotenv.config();
+
+const { combine, timestamp, json } = winston.format;
+const myTimeZone = () => {
+  return new Date().toLocaleString("en-CA", {
+    timeZone: "America/Vancouver",
+  });
+};
+
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || "info",
+  format: combine(timestamp({ format: myTimeZone }), json()),
+  transports: [new winston.transports.File({ filename: "info.log" })],
+});
 
 const personalAccessToken = process.env.GITHUB_TOKEN;
 const listOfRepos = process.env.FILE;
@@ -20,9 +34,9 @@ const octokit = new Octokit({
   baseUrl: "https://api.github.com",
   log: {
     debug: () => {},
-    info: console.info,
-    warn: console.warn,
-    error: console.error,
+    info: logger.info.bind(logger),
+    warn: logger.warn.bind(logger),
+    error: logger.error.bind(logger),
   },
   request: {
     agent: undefined,
@@ -44,7 +58,7 @@ async function getOrgOwners() {
   if(orgResponse.data && orgResponse.data.length) {
     orgResponse.data.forEach((user) => {
       orgOwners.push(user.login);
-      console.log(`admin user ${user.login}`)
+      logger.info(`admin user ${user.login}`)
      });
   }else {
     throw new error("*****NO ADMIN members*******");
@@ -74,7 +88,7 @@ async function getRepoCollaborators(repo, orgOwners) {
       }
     });
   } catch (error) {
-    console.error(`Error getting collaborators for: ${repo}`, error);
+    logger.error(`Error getting collaborators for: ${repo}`, error);
   }
   return collabs;
 }
@@ -89,7 +103,7 @@ async function processRepos(orgOwners, templateName) {
   file.on("line", async (repo) => {
     let users = await getRepoCollaborators(repo, orgOwners);
     if (!users || !users.length) {
-      console.warn(`No users to mention for repo ${repo}`);
+      logger.warn(`No users to mention for repo ${repo}`);
     } 
     const body = getTemplateBody(users, templateName);
     if (isCreateIssue(templateName)) {
@@ -105,7 +119,7 @@ async function createIssue(body, repo) {
  try {
     const response = await getIssue(repo);
     if(response?.data?.items?.length) {
-      console.warn(`Skipping ${repo}, issue already exists.`);
+      logger.warn(`Skipping ${repo}, issue already exists.`);
     }else {
       await octokit.request("POST /repos/{org}/{repo}/issues", {
         org: org,
@@ -118,7 +132,7 @@ async function createIssue(body, repo) {
       });
     }
  } catch (error) {
-   console.error(`Error processing: ${repo}`, error);
+   logger.error(`Error processing: ${repo}`, error);
  }
 }
 
@@ -130,8 +144,8 @@ async function getIssue(repo) {
     });
     return response;
   } catch (error) {
-    console.error("Request failed:", error.request);
-    console.error(error.message);
+    logger.error("Request failed:", error.request);
+    logger.error(error.message);
   }
 
 }
@@ -155,12 +169,12 @@ async function commentOnIssue(body, repo) {
         }
       );
     } else {
-      console.error(`Could not find issue for repo: ${repo}`);
+      logger.error(`Could not find issue for repo: ${repo}`);
     }
    
  }catch (error) {
-   console.error("Request failed:", error.request);
-   console.error(error.message);
+   logger.error("Request failed:", error.request);
+   logger.error(error.message);
  }
 }
 
@@ -180,13 +194,13 @@ function getArgs() {
 }
 
 async function start() {
+  logger.info("***** Starting ******")
   const templateName = getArgs();
   if(!templateName) {
     throw error("Template not provided");
   }
   const orgOwners = await getOrgOwners();
   await processRepos(orgOwners, templateName);
-  
 }
 
 start();
