@@ -4,11 +4,19 @@ import fs from "fs";
 import readline from "readline";
 import Mustache from "mustache";
 import winston from "winston";
+import PQueue from "p-queue";
+import pRetry from "p-retry"
+
+const queue = new PQueue({
+  interval: 2000, // time in which a task has to run, after which a new task can start
+  intervalCap: 1, // only 1 run task during the interval. So even if task 1 has finished, no new task will start until the interval has lapsed.
+  concurrency: 1, // only run one task at once, this prevents multiple tasks running at once. So, if a task takes longer than the interval time to run, no new task can start until that task has completed.
+});
 
 
 dotenv.config();
 
-const { combine, timestamp, json } = winston.format;
+const { combine, timestamp, json, errors } = winston.format;
 const myTimeZone = () => {
   return new Date().toLocaleString("en-CA", {
     timeZone: "America/Vancouver",
@@ -17,7 +25,11 @@ const myTimeZone = () => {
 
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || "info",
-  format: combine(timestamp({ format: myTimeZone }), json()),
+  format: combine(
+    errors({ stack: true }),
+    timestamp({ format: myTimeZone }),
+    json()
+  ),
   transports: [new winston.transports.File({ filename: "info.log" })],
 });
 
@@ -61,7 +73,7 @@ async function getOrgOwners() {
       logger.info(`admin user ${user.login}`)
      });
   }else {
-    throw new error("*****NO ADMIN members*******");
+    throw new Error("*****NO ADMIN members*******");
   }
  return orgOwners;
 }
@@ -82,16 +94,51 @@ async function getRepoCollaborators(repo, orgOwners) {
       }
     );
 
-    response.forEach((user) => {
-      if (!orgOwners.includes(user.login)) {
-        collabs.push(user.login);
-      }
-    });
+    if (response && response.length) {
+      response.forEach((user) => {
+        if (!orgOwners.includes(user.login)) {
+          collabs.push(user.login);
+        }
+      });
+    }
+
   } catch (error) {
     logger.error(`Error getting collaborators for: ${repo}`, error);
   }
   return collabs;
 }
+
+const processRepo = async (repo, orgOwners, templateName) => {
+  try {
+    await pRetry(
+      async () => {
+        logger.info(`processing ${repo}`);
+        const users = await getRepoCollaborators(repo, orgOwners);
+        if (!users || !users.length) {
+          logger.warn(`No users to mention for repo ${repo}`);
+        }
+        const body = getTemplateBody(users, templateName);
+        if (isCreateIssue(templateName)) {
+          await createIssue(body, repo);
+        } else {
+          await commentOnIssue(body, repo);
+        }
+      },
+      {
+        retries: 5,
+        minTimeout: 60000, // wait a minute after a failure, GitHubs recommended
+        factor: 2, // Exponential backoff multiplier
+        onFailedAttempt: (error) => {
+          logger.error(
+            `${repo} - Attempt ${error.attemptNumber} failed. ${error.retriesLeft} retries left.`
+          );
+        },
+      }
+    );
+  } catch (error) {
+    logger.error(`Error processing repo ${repo}:`, error);
+  }
+};
 
 async function processRepos(orgOwners, templateName) {
   const file = readline.createInterface({
@@ -100,25 +147,15 @@ async function processRepos(orgOwners, templateName) {
   });
 
 
-  file.on("line", async (repo) => {
-    let users = await getRepoCollaborators(repo, orgOwners);
-    if (!users || !users.length) {
-      logger.warn(`No users to mention for repo ${repo}`);
-    } 
-    const body = getTemplateBody(users, templateName);
-    if (isCreateIssue(templateName)) {
-      await createIssue(body, repo);
-    } else {
-      await commentOnIssue(body, repo);
-    }
-
+  file.on("line", (repo) => {
+    queue.add(() => processRepo(repo, orgOwners, templateName));
   });
 }
 
 async function createIssue(body, repo) {
  try {
     const response = await getIssue(repo);
-    if(response?.data?.items?.length) {
+    if(response) {
       logger.warn(`Skipping ${repo}, issue already exists.`);
     }else {
       await octokit.request("POST /repos/{org}/{repo}/issues", {
@@ -138,14 +175,19 @@ async function createIssue(body, repo) {
 
 async function getIssue(repo) {
   try {
-    const query = `repo:${org}/${repo} in:title ${issueTitle} is:issue is:open sort:author-date-desc`;
-    const response = await octokit.rest.search.issuesAndPullRequests({
-      q: query,
+    const response = await octokit.request("GET /repos/{org}/{repo}/issues", {
+      org: org,
+      repo: repo,
+      state: "open",
+      headers: {
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
     });
-    return response;
+    //get first issue it finds that matches
+    return response.data.find((issue) => issue.title === issueTitle);
   } catch (error) {
-    logger.error("Request failed:", error.request);
-    logger.error(error.message);
+    logger.error(`Error fetching issues for repo ${repo}:`, error);
+    throw error;
   }
 
 }
@@ -154,7 +196,7 @@ async function commentOnIssue(body, repo) {
   try {
     const response = await getIssue(repo);
  
-    if (response?.data?.items?.length) {
+    if (response) {
       const issue = response.data.items[0];
       await octokit.request(
         "POST /repos/{org}/{repo}/issues/{issue_number}/comments",
@@ -197,7 +239,7 @@ async function start() {
   logger.info("***** Starting ******")
   const templateName = getArgs();
   if(!templateName) {
-    throw error("Template not provided");
+    throw new Error("Template not provided");
   }
   const orgOwners = await getOrgOwners();
   await processRepos(orgOwners, templateName);
