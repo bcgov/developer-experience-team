@@ -3,3 +3,4 @@
 !.env.template
 node_modules/
 *.log
+*.bak

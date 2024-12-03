@@ -4,15 +4,7 @@ import fs from "fs";
 import readline from "readline";
 import Mustache from "mustache";
 import winston from "winston";
-import PQueue from "p-queue";
-import pRetry from "p-retry"
-
-const queue = new PQueue({
-  interval: 2000, // time in which a task has to run, after which a new task can start
-  intervalCap: 1, // only 1 run task during the interval. So even if task 1 has finished, no new task will start until the interval has lapsed.
-  concurrency: 1, // only run one task at once, this prevents multiple tasks running at once. So, if a task takes longer than the interval time to run, no new task can start until that task has completed.
-});
-
+import { throttling } from "@octokit/plugin-throttling";
 
 dotenv.config();
 
@@ -39,7 +31,9 @@ const org = process.env.ORG;
 const issueTitle =
   ":rotating_light: ACTION REQUIRED: Confirm Repository Status for Migration by Dec 20 :rotating_light:";
 
-const octokit = new Octokit({
+const MyOctokit = Octokit.plugin(throttling);
+
+const octokit = new MyOctokit({
   auth: personalAccessToken,
   userAgent: "auto-issue",
   timeZone: "UTC",
@@ -54,6 +48,24 @@ const octokit = new Octokit({
     agent: undefined,
     fetch: undefined,
     timeout: 0,
+  },
+  throttle: {
+    onRateLimit: (retryAfter, options, octokit, retryCount) => {
+      octokit.log.warn(
+        `Request quota exhausted for request ${options.method} ${options.url}`
+      );
+
+      if (retryCount < 5) {
+        octokit.log.warn(`Retrying after ${retryAfter} seconds!`);
+        return true;
+      }
+    },
+    onSecondaryRateLimit: (retryAfter, options, octokit) => {
+      octokit.log.warn(
+        `SecondaryRateLimit detected for request ${options.method} ${options.url}. Retrying after ${retryAfter} seconds`
+      );
+      return true;
+    },
   },
 });
 
@@ -110,31 +122,18 @@ async function getRepoCollaborators(repo, orgOwners) {
 
 const processRepo = async (repo, orgOwners, templateName) => {
   try {
-    await pRetry(
-      async () => {
-        logger.info(`processing ${repo}`);
-        const users = await getRepoCollaborators(repo, orgOwners);
-        if (!users || !users.length) {
-          logger.warn(`No users to mention for repo ${repo}`);
-        }
-        const body = getTemplateBody(users, templateName);
-        if (isCreateIssue(templateName)) {
-          await createIssue(body, repo);
-        } else {
-          await commentOnIssue(body, repo);
-        }
-      },
-      {
-        retries: 5,
-        minTimeout: 60000, // wait a minute after a failure, GitHubs recommended
-        factor: 2, // Exponential backoff multiplier
-        onFailedAttempt: (error) => {
-          logger.error(
-            `${repo} - Attempt ${error.attemptNumber} failed. ${error.retriesLeft} retries left.`
-          );
-        },
-      }
-    );
+    logger.info(`processing ${repo}`);
+    const users = await getRepoCollaborators(repo, orgOwners);
+    if (!users || !users.length) {
+      logger.warn(`No users to mention for repo ${repo}`);
+    }
+    const body = getTemplateBody(users, templateName);
+    if (isCreateIssue(templateName)) {
+      await createIssue(body, repo);
+    } else {
+      await commentOnIssue(body, repo);
+    }
+     
   } catch (error) {
     logger.error(`Error processing repo ${repo}:`, error);
   }
@@ -148,7 +147,7 @@ async function processRepos(orgOwners, templateName) {
 
 
   file.on("line", (repo) => {
-    queue.add(() => processRepo(repo, orgOwners, templateName));
+     processRepo(repo, orgOwners, templateName);
   });
 }
 
