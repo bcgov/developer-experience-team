@@ -1,0 +1,25 @@
+{
+  "name": "auto-issue",
+  "version": "1.0.0",
+  "description": "Create issues on a list of repositories",
+  "main": "index.js",
+  "scripts": {
+    "notify": "node index.js issue.mustache",
+    "reminder": "node index.js comment1.mustache",
+    "final": "node index.js comment2.mustache",
+    "debug-notify": "node index.js issue.mustache",
+    "debug-reminder": "node index.js comment1.mustache",
+    "debug-final": "node index.js comment2.mustache"
+  },
+  "author": "MonicaG",
+  "type": "module",
+  "dependencies": {
+    "@octokit/plugin-throttling": "^9.3.2",
+    "@octokit/rest": "^20.0.0",
+    "dotenv": "^16.0.0",
+    "mustache": "^4.2.0",
+    "p-queue": "^8.0.1",
+    "p-retry": "^6.2.1",
+    "winston": "^3.17.0"
+  }
+}

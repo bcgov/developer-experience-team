@@ -1,0 +1,6 @@
+*.txt
+*.env.*
+!.env.template
+node_modules/
+*.log
+*.bak
