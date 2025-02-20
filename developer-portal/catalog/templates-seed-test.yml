@@ -7,4 +7,4 @@ spec:
     targets:
         - https://github.com/bcgov/devhub-templates/blob/main/software-templates/techdocs-template/template.yaml
         - https://github.com/bcgov/devhub-templates/blob/main/software-templates/techdocs-template-pr/template.yaml
-        - https://github.com/bcgov/devhub-templates/blob/bcc9c463859ff3738a1ec6eb30b14f687ffcfa8d/software-templates/quickstart-openshift/template.yaml
+        - https://github.com/bcgov/devhub-templates/blob/main/software-templates/quickstart-openshift/template.yaml
