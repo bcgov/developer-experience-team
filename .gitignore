@@ -4,3 +4,5 @@
 .watchman-cookie-*
 site/
 *.env
+*.csv
+node_modules/
