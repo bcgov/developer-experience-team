@@ -1,0 +1,14 @@
+{
+  "name": "map-mannequins",
+  "version": "1.0.0",
+  "description": "A script to match mannequin users with target users based on mapping.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "csv-parser": "^3.0.0",
+    "dotenv": "^16.0.0"
+  },
+  "type": "module"
+}
