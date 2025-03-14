@@ -4,11 +4,11 @@
 
 An `.env` file with the following keys is required:
 
-GITHUB_TOKEN_DESTINATION=token requires read access to organization members
-ORG_NAME_SOURCE=the org where the repos currently exist
-ORG_NAME_DESTINATION=the org where the repos are to be transferred to
-REPO_FILE=location of file containing the list of repos to transfer
-TEAMS_FILE=location of file contain the list of teams and their permissions per repo.
+* GITHUB_TOKEN_DESTINATION=token requires read access to organization members
+* ORG_NAME_SOURCE=the org where the repos currently exist
+* ORG_NAME_DESTINATION=the org where the repos are to be transferred to
+* REPO_FILE=location of file containing the list of repos to transfer
+* TEAMS_FILE=location of file contain the list of teams and their permissions per repo.
 
 The [GitHub cli](https://cli.github.com) must also be installed.
 
