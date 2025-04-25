@@ -1,0 +1,7 @@
+{
+	"name": "registry_client",
+	"version": "1.0.0",
+	"type": "module",
+	"exports": "./registry_client.js",
+	"dependencies": { }
+}
