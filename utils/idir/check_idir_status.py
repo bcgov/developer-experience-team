@@ -26,7 +26,7 @@ def remove_github_user_from_org(github_client, github_id, org_name):
 
 async def search(client, email):
     query_params = UsersRequestBuilder.UsersRequestBuilderGetQueryParameters(search=[f'("mail:{email}" OR "userPrincipalName:{email}" OR "otherMails:{email}")'], select=["id", "displayName", "userPrincipalName", "mail", "otherMails"],
-                                                                             )
+    )
 
     request_configuration = UsersRequestBuilder.UsersRequestBuilderGetRequestConfiguration(
         query_parameters=query_params,
