@@ -1,16 +1,25 @@
 #!/bin/zsh
- ORG=$1
- REMOVE=$2
-
-# Check if the org name is provided
-if [ -z "$ORG" ]; then
-  echo "Usage: $0 <org_name> [remove]"
+usage() {
+  echo "Usage: $1 <org_name> [-r|--remove]"
   exit 1
+}
+
+if [[ $# -lt 1 || $# -gt 2 ]]; then
+  usage "$0"
 fi
 
-# Check if remove flag is provided. If it is, set REMOVE_FLAG to "-r" otherwise set it to an empty string
-if [ "$REMOVE"=="remove" ]; then
-  REMOVE_FLAG="-r"
+ORG="$1"
+REMOVE_FLAG=""
+
+if [[ $# -eq 2 ]]; then
+  case "$2" in
+    -r|--remove)
+      REMOVE_FLAG="-r"
+      ;;
+    *)
+      usage "$0"
+      ;;
+  esac
 fi
 
  gh api graphql --paginate -F org=$ORG -f query='query($org: String!, $endCursor:String) {

@@ -10,7 +10,7 @@ This folder contains a set of scripts for cross-referencing GitHub IDs within an
 - `jq` command line tool
 - An Entra ID within the target Azure tenancy
 - A GitHub ID with owner permissions on the organization you're checking users against
-- A GitHub personal access token with `admin:org` permission
+- A GitHub personal access token with `admin:org`, `read:user`, and `user:email` permissions
 
 ## How to use
 
