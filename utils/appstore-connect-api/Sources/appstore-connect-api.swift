@@ -85,7 +85,7 @@ struct AppstoreConnectAPI: AsyncParsableCommand {
                     throw error
                 }
                 print("Retrying...\(retryNum) of \(maxRetryNum)")
-                await Task.sleep(nanoseconds: UInt64(20 * retryNum * 1_000_000_000))
+                try await Task.sleep(for: .seconds(20 * retryNum))
             }
         } while shouldRetry && retryNum <= maxRetryNum
         return appResponse
