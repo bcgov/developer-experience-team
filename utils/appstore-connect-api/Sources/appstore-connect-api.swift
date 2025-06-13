@@ -106,7 +106,7 @@ struct AppstoreConnectAPI: AsyncParsableCommand {
             try csv.write(to: outputURL, atomically: true, encoding: .utf8)
             print("Exported app-user access to \(outputURL.path)")
         }catch {
-            print("Error createing file! \(error)")
+            print("Error creating file! \(error)")
         }
         
     }
