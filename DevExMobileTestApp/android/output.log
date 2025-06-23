@@ -1,0 +1,138 @@
+$ adb logcat | grep -i DevExMobileTestApp                                                                                                   ⬡ 20.18.1 [±mobile-app-update ●●●(✹)]
+08-04 17:05:52.510   640   692 V BackupManagerService: [UserID:0] restoreAtInstall pkg=com.devexmobiletestapp token=1 restoreSet=0
+08-04 17:05:52.557  1704  1704 I MediaProvider: Invalidating LocalCallingIdentity cache for package com.devexmobiletestapp. Reason: package android.intent.action.PACKAGE_ADDED
+08-04 17:05:52.579  1170  1170 D CarrierSvcBindHelper: onPackageAdded: com.devexmobiletestapp
+08-04 17:05:52.630  1170  1170 D ImsResolver: maybeAddedImsService, packageName: com.devexmobiletestapp
+08-04 17:05:52.745  1150  1150 D MediaPlayerList: Name of package changed: com.devexmobiletestapp
+08-04 17:05:52.774  1170  1170 D CarrierSvcBindHelper: onPackageModified: com.devexmobiletestapp
+08-04 17:05:52.776  1150  1150 D MediaPlayerList: Name of package changed: com.devexmobiletestapp
+08-04 17:05:52.776  1150  1150 D MediaPlayerList: Name of package changed: com.devexmobiletestapp
+08-04 17:05:52.776  1150  1150 D MediaPlayerList: Name of package changed: com.devexmobiletestapp
+08-04 17:05:52.776  1170  1170 D ImsResolver: maybeAddedImsService, packageName: com.devexmobiletestapp
+08-04 17:05:52.800   640  1738 W BackupTransportManager: Package com.devexmobiletestapp enabled setting: 0
+08-04 17:05:53.120   640  2447 I ActivityTaskManager: START u0 {act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10000000 cmp=com.devexmobiletestapp/.MainActivity} from uid 2000
+08-04 17:05:53.164   640  2447 V SplashScreenExceptionList: SplashScreen checking exception for package com.devexmobiletestapp (target sdk:33) -> false
+08-04 17:05:53.212   640   671 I ActivityManager: Start proc 4932:com.devexmobiletestapp/u0a172 for next-top-activity {com.devexmobiletestapp/com.devexmobiletestapp.MainActivity}
+08-04 17:05:53.251   640  1330 D CoreBackPreview: Window{1709e0e u0 Splash Screen com.devexmobiletestapp}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@afd563c, mPriority=0}
+08-04 17:05:53.403  4932  4932 W ziparchive: Unable to open '/data/app/~~-OrUPV7YyA3IL3ibFRCACw==/com.devexmobiletestapp-TIQAjurkJ0n9SbeJ-ZxRsA==/base.dm': No such file or directory
+08-04 17:05:53.403  4932  4932 W ziparchive: Unable to open '/data/app/~~-OrUPV7YyA3IL3ibFRCACw==/com.devexmobiletestapp-TIQAjurkJ0n9SbeJ-ZxRsA==/base.dm': No such file or directory
+08-04 17:05:53.541  4932  4932 D nativeloader: Configuring classloader-namespace for other apk /data/app/~~-OrUPV7YyA3IL3ibFRCACw==/com.devexmobiletestapp-TIQAjurkJ0n9SbeJ-ZxRsA==/base.apk. target_sdk_version=33, uses_libraries=, library_path=/data/app/~~-OrUPV7YyA3IL3ibFRCACw==/com.devexmobiletestapp-TIQAjurkJ0n9SbeJ-ZxRsA==/lib/arm64:/data/app/~~-OrUPV7YyA3IL3ibFRCACw==/com.devexmobiletestapp-TIQAjurkJ0n9SbeJ-ZxRsA==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.devexmobiletestapp
+08-04 17:05:53.603  4932  4932 V GraphicsEnvironment: ANGLE Developer option for 'com.devexmobiletestapp' set to: 'default'
+08-04 17:05:53.605  4932  4932 V GraphicsEnvironment: ANGLE GameManagerService for com.devexmobiletestapp: false
+08-04 17:05:53.811  1711  1711 I AiAiEcho: EchoSearch: AppFetcherImpl is initialized with [19] apps [time=216, reason=com.devexmobiletestapp is added]
+08-04 17:05:54.158   640  2411 D CoreBackPreview: Window{ebe4f32 u0 com.devexmobiletestapp/com.devexmobiletestapp.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@d32a600, mPriority=0}
+08-04 17:05:54.297   640   659 W ziparchive: Unable to open '/data/app/~~-OrUPV7YyA3IL3ibFRCACw==/com.devexmobiletestapp-TIQAjurkJ0n9SbeJ-ZxRsA==/base.dm': No such file or directory
+08-04 17:05:54.311   640   659 I ActivityTaskManager: Displayed com.devexmobiletestapp/.MainActivity: +1s173ms
+08-04 17:05:54.382  1625  1625 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1919 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=com.devexmobiletestapp fieldId=-1 fieldName=null extras=null}, false)
+08-04 17:05:54.689   640   881 D CoreBackPreview: Window{1709e0e u0 Splash Screen com.devexmobiletestapp EXITING}: Setting back callback null
+08-04 17:05:54.696   640  2460 W InputManager-JNI: Input channel object '1709e0e Splash Screen com.devexmobiletestapp (client)' was disposed without first being removed with the input manager!
+08-04 17:05:55.812   640   692 I AppsFilter: interaction: PackageSetting{fd74016 com.devexmobiletestapp/10172} -> PackageSetting{b312d97 com.google.android.youtube/10143} BLOCKED
+08-04 17:05:55.812   640   692 I AppsFilter: interaction: PackageSetting{fd74016 com.devexmobiletestapp/10172} -> PackageSetting{99e9b84 com.google.android.googlequicksearchbox/10119} BLOCKED
+08-04 17:05:55.812   640   692 I AppsFilter: interaction: PackageSetting{fd74016 com.devexmobiletestapp/10172} -> PackageSetting{8029f6d com.google.android.apps.messaging/10110} BLOCKED
+08-04 17:05:55.812   640   692 I AppsFilter: interaction: PackageSetting{fd74016 com.devexmobiletestapp/10172} -> PackageSetting{ff47a2 com.android.camera2/10128} BLOCKED
+08-04 17:05:55.812   640   692 I AppsFilter: interaction: PackageSetting{fd74016 com.devexmobiletestapp/10172} -> PackageSetting{dd10c33 com.google.android.as/10107} BLOCKED
+08-04 17:05:55.812   640   692 I AppsFilter: interaction: PackageSetting{fd74016 com.devexmobiletestapp/10172} -> PackageSetting{62bebf0 com.google.android.apps.docs/10131} BLOCKED
+08-04 17:05:55.812   640   692 I AppsFilter: interaction: PackageSetting{fd74016 com.devexmobiletestapp/10172} -> PackageSetting{e5a1433 com.google.android.apps.maps/10133} BLOCKED
+08-04 17:05:55.812   640   692 I AppsFilter: interaction: PackageSetting{fd74016 com.devexmobiletestapp/10172} -> PackageSetting{acee6e0 com.google.android.calendar/10130} BLOCKED
+08-04 17:05:55.812   640   692 I AppsFilter: interaction: PackageSetting{fd74016 com.devexmobiletestapp/10172} -> PackageSetting{e36c569 com.android.remoteprovisioner/10151} BLOCKED
+08-04 17:05:56.368  4932  5039 I ReactNativeJS: Running "DevExMobileTestApp" with {"rootTag":11}
+08-04 17:05:56.621  4932  5059 I cr_VariationsUtils: Failed reading seed file "/data/user/0/com.devexmobiletestapp/app_webview/variations_seed_new"
+08-04 17:05:56.621  4932  5059 I cr_VariationsUtils: Failed reading seed file "/data/user/0/com.devexmobiletestapp/app_webview/variations_seed"
+08-04 17:06:00.850   640   654 I AppsFilter: interaction: PackageSetting{fd74016 com.devexmobiletestapp/10172} -> PackageSetting{d4b63d4 com.google.android.gm/10136} BLOCKED
+08-04 17:06:04.334   640  1789 I AppsFilter: interaction: PackageSetting{fd74016 com.devexmobiletestapp/10172} -> PackageSetting{486311a com.google.android.settings.intelligence/10105} BLOCKED
+08-04 17:06:04.337   640  1330 I AppsFilter: interaction: PackageSetting{fd74016 com.devexmobiletestapp/10172} -> PackageSetting{435044b com.google.android.settings.intelligence/10105} BLOCKED
+08-04 17:06:07.944   640   692 I AppsFilter: interaction: PackageSetting{fd74016 com.devexmobiletestapp/10172} -> PackageSetting{5c7ac86 com.google.android.googlequicksearchbox/10119} BLOCKED
+08-04 17:06:07.944   640   692 I AppsFilter: interaction: PackageSetting{fd74016 com.devexmobiletestapp/10172} -> PackageSetting{2397947 com.google.android.apps.messaging/10110} BLOCKED
+08-04 17:06:07.944   640   692 I AppsFilter: interaction: PackageSetting{fd74016 com.devexmobiletestapp/10172} -> PackageSetting{9567574 com.google.android.gm/10136} BLOCKED
+08-04 17:06:07.944   640   692 I AppsFilter: interaction: PackageSetting{fd74016 com.devexmobiletestapp/10172} -> PackageSetting{d518a9d com.google.android.setupwizard/10108} BLOCKED
+08-04 17:06:07.944   640   692 I AppsFilter: interaction: PackageSetting{fd74016 com.devexmobiletestapp/10172} -> PackageSetting{c24908c com.google.android.apps.maps/10133} BLOCKED
+08-04 17:06:07.944   640   692 I AppsFilter: interaction: PackageSetting{fd74016 com.devexmobiletestapp/10172} -> PackageSetting{6620b12 com.google.android.apps.photos/10142} BLOCKED
+08-04 17:06:07.944   640   692 I AppsFilter: interaction: PackageSetting{fd74016 com.devexmobiletestapp/10172} -> PackageSetting{74f7e23 com.google.android.projection.gearhead/10115} BLOCKED
+08-04 17:06:34.033   640   670 I ActivityManager: Force stopping com.devexmobiletestapp appid=10172 user=-1: installPackageLI
+08-04 17:06:34.036   640   670 I ActivityManager: Killing 4932:com.devexmobiletestapp/u0a172 (adj 700): stop com.devexmobiletestapp due to installPackageLI
+08-04 17:06:34.040   640   692 I PackageManager: Update package com.devexmobiletestapp code path from /data/app/~~-OrUPV7YyA3IL3ibFRCACw==/com.devexmobiletestapp-TIQAjurkJ0n9SbeJ-ZxRsA== to /data/app/~~yd8Cc1cdWZP67gD0ZTXYzw==/com.devexmobiletestapp-QL8pquZF0ZItPuFDs6i9qA==; Retain data and using new
+08-04 17:06:34.052   640   670 W ActivityTaskManager: Force removing ActivityRecord{acf6874 u0 com.devexmobiletestapp/.MainActivity} t9 f}}: app died, no saved state
+08-04 17:06:34.057   640   670 W InputManager-JNI: Input channel object 'ebe4f32 com.devexmobiletestapp/com.devexmobiletestapp.MainActivity (client)' was disposed without first being removed with the input manager!
+08-04 17:06:34.089   640   669 W UsageStatsService: Unexpected activity event reported! (com.devexmobiletestapp/com.devexmobiletestapp.MainActivity event : 23 instanceId : 151148615)
+08-04 17:06:34.090   640  2409 V ActivityManager: Got obituary of 4932:com.devexmobiletestapp
+08-04 17:06:34.118   640   692 I ActivityManager: Force stopping com.devexmobiletestapp appid=10172 user=0: pkg removed
+08-04 17:06:34.133  1704  1704 I MediaProvider: Invalidating LocalCallingIdentity cache for package com.devexmobiletestapp. Reason: package android.intent.action.PACKAGE_REMOVED
+08-04 17:06:34.148  1150  1150 D MediaPlayerList: Name of package changed: com.devexmobiletestapp
+08-04 17:06:34.150  1150  1150 D MediaPlayerList: Name of package changed: com.devexmobiletestapp
+08-04 17:06:34.160  1170  1170 D CarrierSvcBindHelper: onPackageUpdateFinished: com.devexmobiletestapp
+08-04 17:06:34.162  1170  1170 D CarrierSvcBindHelper: onPackageModified: com.devexmobiletestapp
+08-04 17:06:34.197  1704  1704 I MediaProvider: Invalidating LocalCallingIdentity cache for package com.devexmobiletestapp. Reason: package android.intent.action.PACKAGE_ADDED
+08-04 17:06:34.202   640   640 I Telecom : CarModeTracker: Package com.devexmobiletestapp is not tracked.: SSH.oR@ARo
+08-04 17:06:34.214  1170  1170 D ImsResolver: maybeAddedImsService, packageName: com.devexmobiletestapp
+08-04 17:06:34.216   640   640 W AlarmManager: Package com.devexmobiletestapp, uid 10172 lost permission to set exact alarms!
+08-04 17:06:34.450   640   692 I AppsFilter: interaction: PackageSetting{2ecf643 com.devexmobiletestapp/10172} -> PackageSetting{cbf74c0 com.google.android.as/10107} BLOCKED
+08-04 17:06:34.450   640   692 I AppsFilter: interaction: PackageSetting{2ecf643 com.devexmobiletestapp/10172} -> PackageSetting{f9765f9 com.google.android.apps.docs/10131} BLOCKED
+08-04 17:06:34.451   640   692 I AppsFilter: interaction: PackageSetting{2ecf643 com.devexmobiletestapp/10172} -> PackageSetting{c1e793e com.google.android.settings.intelligence/10105} BLOCKED
+08-04 17:06:34.693  1472  6189 W SQLiteLog: (28) double-quoted string literal: "com.devexmobiletestapp"
+08-04 17:06:34.724   640  2447 I ActivityTaskManager: START u0 {act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10000000 cmp=com.devexmobiletestapp/.MainActivity} from uid 2000
+08-04 17:06:34.774   640  2447 V SplashScreenExceptionList: SplashScreen checking exception for package com.devexmobiletestapp (target sdk:33) -> false
+08-04 17:06:34.802   640   671 I ActivityManager: Start proc 6205:com.devexmobiletestapp/u0a172 for next-top-activity {com.devexmobiletestapp/com.devexmobiletestapp.MainActivity}
+08-04 17:06:34.827   640  2460 D CoreBackPreview: Window{8fa3c75 u0 Splash Screen com.devexmobiletestapp}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@6e7447b, mPriority=0}
+08-04 17:06:34.996  6205  6205 W ziparchive: Unable to open '/data/app/~~yd8Cc1cdWZP67gD0ZTXYzw==/com.devexmobiletestapp-QL8pquZF0ZItPuFDs6i9qA==/base.dm': No such file or directory
+08-04 17:06:34.996  6205  6205 W ziparchive: Unable to open '/data/app/~~yd8Cc1cdWZP67gD0ZTXYzw==/com.devexmobiletestapp-QL8pquZF0ZItPuFDs6i9qA==/base.dm': No such file or directory
+08-04 17:06:35.090  6205  6205 D nativeloader: Configuring classloader-namespace for other apk /data/app/~~yd8Cc1cdWZP67gD0ZTXYzw==/com.devexmobiletestapp-QL8pquZF0ZItPuFDs6i9qA==/base.apk. target_sdk_version=33, uses_libraries=, library_path=/data/app/~~yd8Cc1cdWZP67gD0ZTXYzw==/com.devexmobiletestapp-QL8pquZF0ZItPuFDs6i9qA==/lib/arm64:/data/app/~~yd8Cc1cdWZP67gD0ZTXYzw==/com.devexmobiletestapp-QL8pquZF0ZItPuFDs6i9qA==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.devexmobiletestapp
+08-04 17:06:35.106  6205  6205 V GraphicsEnvironment: ANGLE Developer option for 'com.devexmobiletestapp' set to: 'default'
+08-04 17:06:35.107  6205  6205 V GraphicsEnvironment: ANGLE GameManagerService for com.devexmobiletestapp: false
+08-04 17:06:35.496   640  2410 D CoreBackPreview: Window{e26f0a9 u0 com.devexmobiletestapp/com.devexmobiletestapp.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@b8c75cf, mPriority=0}
+08-04 17:06:35.616   640   659 W ziparchive: Unable to open '/data/app/~~yd8Cc1cdWZP67gD0ZTXYzw==/com.devexmobiletestapp-QL8pquZF0ZItPuFDs6i9qA==/base.dm': No such file or directory
+08-04 17:06:35.622   640   659 I ActivityTaskManager: Displayed com.devexmobiletestapp/.MainActivity: +888ms
+08-04 17:06:35.627   640   692 I AppsFilter: interaction: PackageSetting{2ecf643 com.devexmobiletestapp/10172} -> PackageSetting{a6f22ea com.google.android.apps.docs/10131} BLOCKED
+08-04 17:06:35.725  1625  1625 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1919 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=com.devexmobiletestapp fieldId=-1 fieldName=null extras=null}, false)
+08-04 17:06:36.026   640  1576 D CoreBackPreview: Window{8fa3c75 u0 Splash Screen com.devexmobiletestapp EXITING}: Setting back callback null
+08-04 17:06:36.027   640  2410 W InputManager-JNI: Input channel object '8fa3c75 Splash Screen com.devexmobiletestapp (client)' was disposed without first being removed with the input manager!
+08-04 17:06:36.390  6205  6327 I ReactNativeJS: Running "DevExMobileTestApp" with {"rootTag":11}
+08-04 17:06:36.583  6205  6339 I cr_VariationsUtils: Failed reading seed file "/data/user/0/com.devexmobiletestapp/app_webview/variations_seed_new"
+08-04 17:06:36.583  6205  6339 I cr_VariationsUtils: Failed reading seed file "/data/user/0/com.devexmobiletestapp/app_webview/variations_seed"
+08-04 17:06:44.031   640   692 I AppsFilter: interaction: PackageSetting{2ecf643 com.devexmobiletestapp/10172} -> PackageSetting{d092ef com.google.android.apps.messaging/10110} BLOCKED
+08-08 15:16:47.979   640   689 E VerityUtils: Failed to measure fs-verity, errno 1: /data/app/~~yd8Cc1cdWZP67gD0ZTXYzw==/com.devexmobiletestapp-QL8pquZF0ZItPuFDs6i9qA==/base.apk
+08-08 15:16:49.081   640   689 E VerityUtils: Failed to measure fs-verity, errno 1: /data/app/~~yd8Cc1cdWZP67gD0ZTXYzw==/com.devexmobiletestapp-QL8pquZF0ZItPuFDs6i9qA==/base.apk
+08-08 15:16:49.157   640   689 E VerityUtils: Failed to measure fs-verity, errno 1: /data/app/~~yd8Cc1cdWZP67gD0ZTXYzw==/com.devexmobiletestapp-QL8pquZF0ZItPuFDs6i9qA==/base.apk
+08-08 15:17:05.997   640   692 I AppsFilter: interaction: PackageSetting{2ecf643 com.devexmobiletestapp/10172} -> PackageSetting{e2ca956 com.google.android.googlequicksearchbox/10119} BLOCKED
+08-08 15:39:06.296   640   692 I AppsFilter: interaction: PackageSetting{2ecf643 com.devexmobiletestapp/10172} -> PackageSetting{153db12 com.android.chrome/10139} BLOCKED
+06-23 09:26:27.376   640   692 I AppsFilter: interaction: PackageSetting{2ecf643 com.devexmobiletestapp/10172} -> PackageSetting{a72485b com.google.android.contacts/10127} BLOCKED
+06-23 10:54:27.542   640   670 I ActivityManager: Force stopping com.devexmobiletestapp appid=10172 user=-1: installPackageLI
+06-23 10:54:27.544   640   670 I ActivityManager: Killing 6205:com.devexmobiletestapp/u0a172 (adj 0): stop com.devexmobiletestapp due to installPackageLI
+06-23 10:54:27.549   640   670 W ActivityTaskManager: Force removing ActivityRecord{c99b2cb u0 com.devexmobiletestapp/.MainActivity} t10 f}}: app died, no saved state
+06-23 10:54:27.549   640   692 I PackageManager: Update package com.devexmobiletestapp code path from /data/app/~~yd8Cc1cdWZP67gD0ZTXYzw==/com.devexmobiletestapp-QL8pquZF0ZItPuFDs6i9qA== to /data/app/~~DQrZUYSuvgJyLNfZfQTGgg==/com.devexmobiletestapp-XpGBkqABHZO2ZSQ6Aqp_Ug==; Retain data and using new
+06-23 10:54:27.583   640   670 W WindowManager: Failed to deliver inset state change to w=Window{e26f0a9 u0 com.devexmobiletestapp/com.devexmobiletestapp.MainActivity}
+06-23 10:54:27.588   640   670 W WindowManager: Exception thrown during dispatchAppVisibility Window{e26f0a9 u0 com.devexmobiletestapp/com.devexmobiletestapp.MainActivity}
+06-23 10:54:27.594   640   670 W InputManager-JNI: Input channel object 'e26f0a9 com.devexmobiletestapp/com.devexmobiletestapp.MainActivity (client)' was disposed without first being removed with the input manager!
+06-23 10:54:27.619   640  2461 V ActivityManager: Got obituary of 6205:com.devexmobiletestapp
+06-23 10:54:27.638   640   692 I ActivityManager: Force stopping com.devexmobiletestapp appid=10172 user=0: pkg removed
+06-23 10:54:27.667  1704  1704 I MediaProvider: Invalidating LocalCallingIdentity cache for package com.devexmobiletestapp. Reason: package android.intent.action.PACKAGE_REMOVED
+06-23 10:54:27.683  1704  1704 I MediaProvider: Invalidating LocalCallingIdentity cache for package com.devexmobiletestapp. Reason: package android.intent.action.PACKAGE_ADDED
+06-23 10:54:27.685  1150  1150 D MediaPlayerList: Name of package changed: com.devexmobiletestapp
+06-23 10:54:27.685  1150  1150 D MediaPlayerList: Name of package changed: com.devexmobiletestapp
+06-23 10:54:27.765  1170  1170 D CarrierSvcBindHelper: onPackageUpdateFinished: com.devexmobiletestapp
+06-23 10:54:27.766  1170  1170 D CarrierSvcBindHelper: onPackageModified: com.devexmobiletestapp
+06-23 10:54:27.818   640   640 I Telecom : CarModeTracker: Package com.devexmobiletestapp is not tracked.: SSH.oR@Abw
+06-23 10:54:27.886  1170  1170 D ImsResolver: maybeAddedImsService, packageName: com.devexmobiletestapp
+06-23 10:54:27.936   640   640 W AlarmManager: Package com.devexmobiletestapp, uid 10172 lost permission to set exact alarms!
+06-23 10:54:28.013   640   689 E VerityUtils: Failed to measure fs-verity, errno 1: /data/app/~~DQrZUYSuvgJyLNfZfQTGgg==/com.devexmobiletestapp-XpGBkqABHZO2ZSQ6Aqp_Ug==/base.apk
+06-23 10:54:28.082  9041 30324 W SQLiteLog: (28) double-quoted string literal: "com.devexmobiletestapp"
+06-23 10:54:28.282   640  2458 I ActivityTaskManager: START u0 {act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10000000 cmp=com.devexmobiletestapp/.MainActivity} from uid 2000
+06-23 10:54:28.322   640  2408 D CoreBackPreview: Window{a83e6d7 u0 Splash Screen com.devexmobiletestapp}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@23c1030, mPriority=0}
+06-23 10:54:28.342   640   671 I ActivityManager: Start proc 30519:com.devexmobiletestapp/u0a172 for next-top-activity {com.devexmobiletestapp/com.devexmobiletestapp.MainActivity}
+06-23 10:54:28.532   640   689 E VerityUtils: Failed to measure fs-verity, errno 1: /data/app/~~DQrZUYSuvgJyLNfZfQTGgg==/com.devexmobiletestapp-XpGBkqABHZO2ZSQ6Aqp_Ug==/base.apk
+06-23 10:54:28.537 30519 30519 W ziparchive: Unable to open '/data/app/~~DQrZUYSuvgJyLNfZfQTGgg==/com.devexmobiletestapp-XpGBkqABHZO2ZSQ6Aqp_Ug==/base.dm': No such file or directory
+06-23 10:54:28.537 30519 30519 W ziparchive: Unable to open '/data/app/~~DQrZUYSuvgJyLNfZfQTGgg==/com.devexmobiletestapp-XpGBkqABHZO2ZSQ6Aqp_Ug==/base.dm': No such file or directory
+06-23 10:54:28.698 30519 30519 D nativeloader: Configuring classloader-namespace for other apk /data/app/~~DQrZUYSuvgJyLNfZfQTGgg==/com.devexmobiletestapp-XpGBkqABHZO2ZSQ6Aqp_Ug==/base.apk. target_sdk_version=35, uses_libraries=, library_path=/data/app/~~DQrZUYSuvgJyLNfZfQTGgg==/com.devexmobiletestapp-XpGBkqABHZO2ZSQ6Aqp_Ug==/lib/arm64:/data/app/~~DQrZUYSuvgJyLNfZfQTGgg==/com.devexmobiletestapp-XpGBkqABHZO2ZSQ6Aqp_Ug==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.devexmobiletestapp
+06-23 10:54:28.711 30519 30519 V GraphicsEnvironment: ANGLE Developer option for 'com.devexmobiletestapp' set to: 'default'
+06-23 10:54:28.712 30519 30519 V GraphicsEnvironment: ANGLE GameManagerService for com.devexmobiletestapp: false
+06-23 10:54:28.736 30519 30519 W SoLoader: Recording new base apk path: /data/app/~~DQrZUYSuvgJyLNfZfQTGgg==/com.devexmobiletestapp-XpGBkqABHZO2ZSQ6Aqp_Ug==/base.apk
+06-23 10:54:28.739 30519 30519 I SoLoader: Preparing SO source: DirectApkSoSource[root = [/data/app/~~DQrZUYSuvgJyLNfZfQTGgg==/com.devexmobiletestapp-XpGBkqABHZO2ZSQ6Aqp_Ug==/base.apk!/lib/arm64-v8a]]
+06-23 10:54:28.743 30519 30519 I SoLoader: Preparing SO source: ApplicationSoSource[DirectorySoSource[root = /data/app/~~DQrZUYSuvgJyLNfZfQTGgg==/com.devexmobiletestapp-XpGBkqABHZO2ZSQ6Aqp_Ug==/lib/arm64 flags = 0]]
+06-23 10:54:28.824 30519 30519 E AndroidRuntime: Process: com.devexmobiletestapp, PID: 30519
+06-23 10:54:28.824 30519 30519 E AndroidRuntime: java.lang.RuntimeException: Unable to instantiate activity ComponentInfo{com.devexmobiletestapp/com.devexmobiletestapp.MainActivity}: java.lang.ClassNotFoundException: Didn't find class "com.devexmobiletestapp.MainActivity" on path: DexPathList[[zip file "/data/app/~~DQrZUYSuvgJyLNfZfQTGgg==/com.devexmobiletestapp-XpGBkqABHZO2ZSQ6Aqp_Ug==/base.apk"],nativeLibraryDirectories=[/data/app/~~DQrZUYSuvgJyLNfZfQTGgg==/com.devexmobiletestapp-XpGBkqABHZO2ZSQ6Aqp_Ug==/lib/arm64, /data/app/~~DQrZUYSuvgJyLNfZfQTGgg==/com.devexmobiletestapp-XpGBkqABHZO2ZSQ6Aqp_Ug==/base.apk!/lib/arm64-v8a, /system/lib64, /system_ext/lib64]]
+06-23 10:54:28.824 30519 30519 E AndroidRuntime: Caused by: java.lang.ClassNotFoundException: Didn't find class "com.devexmobiletestapp.MainActivity" on path: DexPathList[[zip file "/data/app/~~DQrZUYSuvgJyLNfZfQTGgg==/com.devexmobiletestapp-XpGBkqABHZO2ZSQ6Aqp_Ug==/base.apk"],nativeLibraryDirectories=[/data/app/~~DQrZUYSuvgJyLNfZfQTGgg==/com.devexmobiletestapp-XpGBkqABHZO2ZSQ6Aqp_Ug==/lib/arm64, /data/app/~~DQrZUYSuvgJyLNfZfQTGgg==/com.devexmobiletestapp-XpGBkqABHZO2ZSQ6Aqp_Ug==/base.apk!/lib/arm64-v8a, /system/lib64, /system_ext/lib64]]
+06-23 10:54:28.877   640  1333 W ActivityTaskManager:   Force finishing activity com.devexmobiletestapp/.MainActivity
+06-23 10:54:28.914   640  2408 I ActivityManager: Process com.devexmobiletestapp (pid 30519) has died: fg  TOP
+06-23 10:54:28.940   640  2127 D CoreBackPreview: Window{a83e6d7 u0 Splash Screen com.devexmobiletestapp EXITING}: Setting back callback null
+06-23 10:54:28.942   640  2458 W InputManager-JNI: Input channel object 'a83e6d7 Splash Screen com.devexmobiletestapp (client)' was disposed without first being removed with the input manager!
+06-23 10:54:29.146   640   692 I AppsFilter: interaction: PackageSetting{f73c6c0 com.devexmobiletestapp/10172} -> PackageSetting{35a4ff9 com.google.android.googlequicksearchbox/10119} BLOCKED
+06-23 10:54:29.381   640   662 W ActivityTaskManager: Activity top resumed state loss timeout for ActivityRecord{ad732c u0 com.devexmobiletestapp/.MainActivity} t-1 f}}

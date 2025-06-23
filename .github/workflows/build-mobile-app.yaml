@@ -1,4 +1,6 @@
 name: Build Mobile App
+permissions:
+  contents: read
 on: 
   workflow_dispatch:
   push:
@@ -67,7 +69,7 @@ jobs:
             npx react-native build-android --mode=release
       
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: android-release
           path: DevExMobileTestApp/android/app/build/outputs/bundle/release/app-release.aab
@@ -112,7 +114,7 @@ jobs:
       - name: Setup Xcode version
         uses: maxim-lobanov/setup-xcode@v1.6.0
         with:
-          xcode-version: '15.2'
+          xcode-version: '16.4'
       
       - name: Display XCode Path for debug
         run: |
@@ -204,7 +206,7 @@ jobs:
           -verbose
       
       - name: Upload a Build Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ios-release
           path: DevExMobileTestApp/ios/${{ env.EXPORT_DIR }}
