@@ -10,7 +10,7 @@
 		0C80B921A6F3F58F76C31292 /* libPods-DevExMobileTestApp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-DevExMobileTestApp.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
-		9982FCCA2E0607A3006308D3 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9982FCC92E0607A3006308D3 /* AppDelegate.swift */; };
+		99C7BE422E0B11CB007AD85D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99C7BE412E0B11CB007AD85D /* AppDelegate.swift */; };
 		F6112DF710D4F50AA1300619 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B5196C18591643319C1E6C81 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
@@ -34,8 +34,8 @@
 		5709B34CF0A7D63546082F79 /* Pods-DevExMobileTestApp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-DevExMobileTestApp.release.xcconfig"; path = "Target Support Files/Pods-DevExMobileTestApp/Pods-DevExMobileTestApp.release.xcconfig"; sourceTree = "<group>"; };
 		5DCACB8F33CDC322A6C60F78 /* libPods-DevExMobileTestApp.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-DevExMobileTestApp.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = DevExMobileTestApp/LaunchScreen.storyboard; sourceTree = "<group>"; };
-		9982FCC92E0607A3006308D3 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = "/Users/mgranboi/development/developer-experience-team/DevExMobileTestApp/ios/DevExMobileTestApp/AppDelegate.swift"; sourceTree = "<absolute>"; };
 		9982FCCC2E06095A006308D3 /* DevExMobileTestApp-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "DevExMobileTestApp-Bridging-Header.h"; path = "/Users/mgranboi/development/developer-experience-team/DevExMobileTestApp/ios/DevExMobileTestApp/DevExMobileTestApp-Bridging-Header.h"; sourceTree = "<absolute>"; };
+		99C7BE412E0B11CB007AD85D /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		B5196C18591643319C1E6C81 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = DevExMobileTestApp/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
@@ -78,7 +78,7 @@
 		13B07FAE1A68108700A75B9A /* DevExMobileTestApp */ = {
 			isa = PBXGroup;
 			children = (
-				9982FCC92E0607A3006308D3 /* AppDelegate.swift */,
+				99C7BE412E0B11CB007AD85D /* AppDelegate.swift */,
 				9982FCCC2E06095A006308D3 /* DevExMobileTestApp-Bridging-Header.h */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
@@ -361,7 +361,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				9982FCCA2E0607A3006308D3 /* AppDelegate.swift in Sources */,
+				99C7BE422E0B11CB007AD85D /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
