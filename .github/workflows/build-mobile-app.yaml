@@ -271,8 +271,8 @@ jobs:
 
           mc alias set $MINIO_ALIAS $MINIO_ENDPOINT $MINIO_ACCESS_KEY_ID $MINIO_SECRET_ACCESS_KEY
           
-          echo "Copying ios/$EXPORT_DIR"
-          mc mirror --overwrite --remove ios/$EXPORT_DIR $MINIO_ALIAS/$MINIO_BUCKET/$EXPORT_DIR
+          echo "Copying $EXPORT_DIR"
+          mc mirror --overwrite --remove $EXPORT_DIR $MINIO_ALIAS/$MINIO_BUCKET/$EXPORT_DIR
           
       
       # Uncomment the following lines if you want to push the build to bcgov's artifactory
