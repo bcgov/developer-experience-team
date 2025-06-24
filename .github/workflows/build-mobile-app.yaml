@@ -272,12 +272,12 @@ jobs:
           mc alias set $MINIO_ALIAS $MINIO_ENDPOINT $MINIO_ACCESS_KEY_ID $MINIO_SECRET_ACCESS_KEY
           
           echo "Copying ios/$EXPORT_DIR"
-          mc cp --recursive ios/$EXPORT_DIR $MINIO_ALIAS/$MINIO_BUCKET/
-
+          mc mirror --overwrite --remove ios/$EXPORT_DIR $MINIO_ALIAS/$MINIO_BUCKET/$EXPORT_DIR
+          
       
       # Uncomment the following lines if you want to push the build to bcgov's artifactory
       # Note: Ensure that the JFrog CLI is set up and configured correctly in your repository secrets.    
-          
+
       # - name: Setup JFrog CLI
       #   uses: jfrog/setup-jfrog-cli@v4
       #   with:
