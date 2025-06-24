@@ -59,17 +59,17 @@ jobs:
         run: |
           echo "GITHUB_RUN_NUMBER_WITH_OFFSET=$(($NUM + $VERSION_NUM_OFFSET))" >> $GITHUB_ENV
 
-      - name: Sign app 
-        env:
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
-          ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
-          VERSION_CODE: ${{ env.GITHUB_RUN_NUMBER_WITH_OFFSET }}
-        run: |
-            npx react-native build-android --mode=release
+      # - name: Sign app 
+      #   env:
+      #     ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      #     ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
+      #     ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
+      #     VERSION_CODE: ${{ env.GITHUB_RUN_NUMBER_WITH_OFFSET }}
+      #   run: |
+      #       npx react-native build-android --mode=release
       
-      - name: List build outputs
-        run: ls -l android/app/build/outputs/bundle/release/      
+      # - name: List build outputs
+      #   run: ls -l android/app/build/outputs/bundle/release/      
       # - name: Upload Artifact
       #   uses: actions/upload-artifact@v4
       #   with:
@@ -87,9 +87,22 @@ jobs:
           MINIO_ENDPOINT: ${{ secrets.MINIO_ENDPOINT }} # e.g. https://minio.example.com
           MINIO_BUCKET: ${{ secrets.MINIO_BUCKET }}
         run: |
-          pip install --user awscli
-          export  PATH=$PATH:~/.local/bin
-          aws --endpoint-url "$MINIO_ENDPOINT" s3 cp android/app/build/outputs/bundle/release/app-release.aab s3://$MINIO_BUCKET/app-release.aab     
+          echo "installing MinIO client"
+          curl https://dl.min.io/client/mc/release/linux-amd64/mc \
+          --create-dirs \
+          -o $HOME/minio-binaries/mc
+
+          chmod +x $HOME/minio-binaries/mc
+          export PATH=$PATH:$HOME/minio-binaries/
+
+          bash +o history
+          mc alias set s3 "$MINIO_ENDPOINT" "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY"
+          bash -o history
+          
+          mc ls s3
+          # pip install --user awscli
+          # export  PATH=$PATH:~/.local/bin
+          # aws --endpoint-url "$MINIO_ENDPOINT" s3 cp android/app/build/outputs/bundle/release/app-release.aab s3://$MINIO_BUCKET/app-release.aab     
       
       # Uncomment the following lines if you want to push the build to JFrog Artifactory
       # Note: Ensure that the JFrog CLI is set up and configured correctly in your repository secrets.    
