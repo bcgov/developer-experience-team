@@ -68,6 +68,8 @@ jobs:
         run: |
             npx react-native build-android --mode=release
       
+      - name: List build outputs
+        run: ls -l DevExMobileTestApp/android/app/build/outputs/bundle/release/      
       # - name: Upload Artifact
       #   uses: actions/upload-artifact@v4
       #   with:
@@ -87,7 +89,7 @@ jobs:
         run: |
           pip install --user awscli
           export  PATH=$PATH:~/.local/bin
-          aws --endpoint-url "$MINIO_ENDPOINT" s3 cp DevExMobileTestApp/android/app/build/outputs/bundle/release/app-release.aab s3://$MINIO_BUCKET/app-release.aab     
+          aws --endpoint-url "$MINIO_ENDPOINT" s3 cp android/app/build/outputs/bundle/release/app-release.aab s3://$MINIO_BUCKET/app-release.aab     
       
       # Uncomment the following lines if you want to push the build to JFrog Artifactory
       # Note: Ensure that the JFrog CLI is set up and configured correctly in your repository secrets.    
