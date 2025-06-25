@@ -6,3 +6,4 @@ site/
 *.env
 *.csv
 node_modules/
+**/.idea/

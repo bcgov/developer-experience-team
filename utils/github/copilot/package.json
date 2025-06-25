@@ -1,0 +1,22 @@
+{
+  "name": "copilot-onboarding",
+  "version": "1.0.0",
+  "description": "A script to assign GitHub Copilot licenses to users.",
+  "main": "copilot_onboarding.ts",
+  "scripts": {
+    "start": "ts-node copilot_onboarding.ts"
+  },
+  "dependencies": {
+    "@octokit/rest": "^20.0.0",
+    "console-log-level": "^1.4.1",
+    "csv-parser": "^3.0.0"
+  },
+  "devDependencies": {
+    "ts-node": "^10.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "license": "MIT"
+}
