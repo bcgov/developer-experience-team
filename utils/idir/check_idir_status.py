@@ -39,13 +39,13 @@ async def search(client, email):
         return users.value
 
 async def main():
-	# Parse command line arguments
+    # Parse command line arguments
     parser = argparse.ArgumentParser(description="Correlate GitHub SSO identity in a GitHub organization with Entra ID accounts and optionally remove users from the organization.")
     parser.add_argument("org", help="GitHub organization name")
     parser.add_argument("-r","--remove", help="Whether to remove users from a GitHub organization when there is no Entra ID account matching their GitHub SSO identity.", action="store_true")
     args = parser.parse_args()
 
-	# Map command line arguments to local variables
+    # Map command line arguments to local variables
     remove_unmatched_users = args.remove
     github_org = args.org
 
@@ -78,6 +78,10 @@ async def main():
                     has_idir = False
                     if remove_unmatched_users:
                         removed_from_org = remove_github_user_from_org(github_client, github_id, github_org)
+                        message = "Removed."
+                    else:
+                        message = "Dry run - not removed."
+
                 else:
                     has_idir = True
         else:
