@@ -2,7 +2,7 @@ import json
 import os
 import logging
 import argparse
-from github import Github
+from github import Github, Auth
 from github.GithubException import GithubException
 from typing import Dict, List, Any
 import requests
@@ -400,16 +400,36 @@ def main():
     group.add_argument('--clean-only', action='store_true', help='Delete all discussions, comments, and labels, then exit')
     args = parser.parse_args()
 
-    # Get GitHub token from environment
-    token = os.environ.get("GITHUB_TOKEN")
-    if not token:
-        raise ValueError("GITHUB_TOKEN environment variable must be set")
+  
+    installation_id = os.environ.get("GHD_INSTALLATION_ID")
+    app_id = os.environ.get("GHD_APP_ID")
+    # This should be the path to the private key file
+    private_key = os.environ.get("GHD_PRIVATE_KEY")
 
+    if not installation_id or not app_id or not private_key:
+        raise ValueError("INSTALLATION_ID, APP_ID, and PRIVATE_KEY environment variables must be set")
+    
+    if not installation_id.isdigit() or not app_id.isdigit():
+        raise ValueError("INSTALLATION_ID and APP_ID must be numeric")
+
+    with open(private_key, "r") as key_file:
+        private_key = key_file.read()
+
+    auth = Auth.AppAuth(int(app_id), private_key).get_installation_auth(int(installation_id))
+
+    # Initialize PyGithub client
+    g = Github(auth=auth)
+    
     repo_parts = args.repo.split('/')
     if len(repo_parts) != 2:
         raise ValueError("Repository must be in format 'owner/name'")
 
     owner, name = repo_parts
+    repo = g.get_repo(f"{owner}/{name}")
+
+    logger.info(f"Using repo'{repo.full_name}'")
+
+    token = auth.token
 
     # Clean repository discussions, comments, and labels if --clean or --clean-only flag is set
     if args.clean or args.clean_only:
@@ -417,10 +437,6 @@ def main():
         if args.clean_only:
             logger.info('Cleanup complete. Exiting due to --clean-only flag.')
             return
-
-    # Initialize PyGithub client
-    g = Github(token)
-    repo = g.get_repo(f"{owner}/{name}")
 
     # Load data
     questions = load_json(args.questions_file)
