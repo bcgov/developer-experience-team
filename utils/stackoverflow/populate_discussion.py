@@ -256,16 +256,24 @@ def find_discussion_by_title(token, owner: str, name: str, title: str):
             return d['number'], d['id']
     return None, None
 
-def clean_repo_discussions(token, owner: str, name: str):
-    """Delete all discussions, their comments, and remove all labels from the repo."""
-    logger.warning("Cleaning all discussions, comments, and labels from the repository!")
+def clean_repo_discussions(token, owner: str, name: str, category_name: str = None):
+    """Delete all discussions, their comments, and remove all labels from the repo. Optionally filter by category."""
+
+    category_id = get_category_id(token, owner, name, category_name) if category_name else None
+
+    if not category_id:
+      logger.warning("Cleaning all discussions, comments, and labels from the repository!")
+    else:
+      logger.warning(f"Cleaning discussions in category '{category_name}', comments, and labels from the repository!")
+      
+
     has_next_page = True
     end_cursor = None
     while has_next_page:
         query = """
-        query($owner: String!, $name: String!, $after: String) {
+        query($owner: String!, $name: String!, $after: String, $categoryId: ID) {
           repository(owner: $owner, name: $name) {
-            discussions(first: 50, after: $after) {
+            discussions(first: 50, after: $after, categoryId: $categoryId) {
               nodes {
                 id
                 number
@@ -289,7 +297,7 @@ def clean_repo_discussions(token, owner: str, name: str):
           }
         }
         """
-        variables = {'owner': owner, 'name': name, 'after': end_cursor}
+        variables = {'owner': owner, 'name': name, 'after': end_cursor, 'categoryId': category_id}
         data = github_graphql_request(token, query, variables)
         repo = data['repository']
         discussions = repo['discussions']['nodes']
@@ -396,8 +404,9 @@ def main():
     parser.add_argument('--limit', type=int, help='Limit number of questions to process')
     parser.add_argument('--image-folder', default='discussion_images_temp', help='Path to local folder containing images')
     group = parser.add_mutually_exclusive_group()
-    group.add_argument('--clean', action='store_true', help='Delete all discussions, comments, and labels before import')
-    group.add_argument('--clean-only', action='store_true', help='Delete all discussions, comments, and labels, then exit')
+    group.add_argument('--clean', action='store_true', help='Delete all discussions, comments, and labels in the repo before import')
+    group.add_argument('--clean-only', action='store_true', help='Delete all discussions, comments, and labels, in the repo then exit')
+    parser.add_argument('--clean-category', action='store_true', help='Used with --category and --clean or --clean-only to delete all discussions, comments, and labels in the specified category')
     args = parser.parse_args()
 
   
@@ -411,6 +420,9 @@ def main():
     
     if not installation_id.isdigit() or not app_id.isdigit():
         raise ValueError("INSTALLATION_ID and APP_ID must be numeric")
+    
+    if args.clean_category and (not args.category or not (args.clean or args.clean_only)):
+        raise ValueError("When using --clean-category, you must also specify --category and either --clean or --clean-only")
 
     with open(private_key, "r") as key_file:
         private_key = key_file.read()
@@ -433,7 +445,7 @@ def main():
 
     # Clean repository discussions, comments, and labels if --clean or --clean-only flag is set
     if args.clean or args.clean_only:
-        clean_repo_discussions(token, owner, name)
+        clean_repo_discussions(token, owner, name, args.category if args.clean_category else None)
         if args.clean_only:
             logger.info('Cleanup complete. Exiting due to --clean-only flag.')
             return
@@ -452,6 +464,8 @@ def main():
 
     # Get discussion category ID
     category_id = get_category_id(token, owner, name, args.category)
+
+    logger.info(f"category_id for '{args.category}': {category_id}")
 
     # Process questions with limit if specified
     if args.limit:
