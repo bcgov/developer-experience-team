@@ -256,7 +256,7 @@ def find_discussion_by_title(token, owner: str, name: str, title: str, category:
         logger.info("Searching for discussion in all categories")
 
     query = """
-    query($owner: String!, $name: String!, $categoryId: ID!) {
+    query($owner: String!, $name: String!, $categoryId: ID) {
       repository(owner: $owner, name: $name) {
         discussions(first: 100, orderBy: {field: CREATED_AT, direction: DESC}, categoryId: $categoryId) {
           nodes {
