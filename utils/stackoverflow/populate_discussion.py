@@ -416,7 +416,7 @@ def main():
     private_key = os.environ.get("GHD_PRIVATE_KEY")
 
     if not installation_id or not app_id or not private_key:
-        raise ValueError("INSTALLATION_ID, APP_ID, and PRIVATE_KEY environment variables must be set")
+        raise ValueError("GHD_INSTALLATION_ID, GHD_APP_ID, and GHD_PRIVATE_KEY environment variables must be set")
     
     if not installation_id.isdigit() or not app_id.isdigit():
         raise ValueError("INSTALLATION_ID and APP_ID must be numeric")
