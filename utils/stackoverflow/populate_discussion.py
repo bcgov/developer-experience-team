@@ -415,7 +415,7 @@ def get_url_redir_str(stackoverflow_url: str, github_discussion_url: str):
     redirect_path = parsed_url.path + '#' + parsed_url.fragment if parsed_url.fragment else parsed_url.path
     return f'redir {redirect_path} {github_discussion_url} permanent'
 
-def log_url_mapping(stackoverflow_urls: list[str], github_discussion_url: str):
+def log_url_mapping(stackoverflow_urls: List[str], github_discussion_url: str):
     """Log the mapping between Stack Overflow and GitHub Discussion URLs
     This mapping will be used for redirects in Caddy server
     StackOverflow URLs have multiple links for an entry, a link plus a share link.
