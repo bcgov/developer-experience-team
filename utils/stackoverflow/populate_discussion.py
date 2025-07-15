@@ -439,7 +439,7 @@ def main():
     owner, name = repo_parts
     repo = g.get_repo(f"{owner}/{name}")
 
-    logger.info(f"Using repo'{repo.full_name}'")
+    logger.info(f"Using repo '{repo.full_name}'")
 
     token = auth.token
 
