@@ -249,7 +249,7 @@ def add_comment(token, owner: str, name: str, discussion_number: int, body: str)
     return data['addDiscussionComment']['comment']['id'], data['addDiscussionComment']['comment']['url']
 
 def find_discussion_by_title(token, owner: str, name: str, title: str, category: Optional[Category] = None):
-    """Return (discussion_number, discussion_node_id) if a discussion with the given title exists, else None."""
+    """Return discussion_node_id if a discussion with the given title exists, else None."""
     if category:
         logger.info(f"Searching for discussion in category '{category.name}'")
     else:
@@ -423,9 +423,9 @@ def log_url_mapping(stackoverflow_urls: List[str], github_discussion_url: str):
     """
     for stackoverflow_url in stackoverflow_urls:
       if stackoverflow_url:
-          url_mapping_logger.info(get_url_redir_str(stackoverflow_url, github_discussion_url))
+        url_mapping_logger.info(get_url_redir_str(stackoverflow_url, github_discussion_url))
       else:
-          logger.warning("Empty Stack Overflow URL found, skipping logging for this entry.")
+        logger.warning("Empty Stack Overflow URL found, skipping logging for this entry.")
 
 def main():
     parser = argparse.ArgumentParser(description='Populate GitHub Discussions from Q&A data')
