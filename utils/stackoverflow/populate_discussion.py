@@ -419,7 +419,7 @@ def main():
         raise ValueError("GHD_INSTALLATION_ID, GHD_APP_ID, and GHD_PRIVATE_KEY environment variables must be set")
     
     if not installation_id.isdigit() or not app_id.isdigit():
-        raise ValueError("INSTALLATION_ID and APP_ID must be numeric")
+        raise ValueError("GHD_INSTALLATION_ID and GHD_APP_ID must be numeric")
     
     if args.clean_category and (not args.category or not (args.clean or args.clean_only)):
         raise ValueError("When using --clean-category, you must also specify --category and either --clean or --clean-only")
