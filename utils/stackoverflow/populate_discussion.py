@@ -4,14 +4,26 @@ import logging
 import argparse
 from github import Github, Auth
 from github.GithubException import GithubException
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 import requests
 import re
 from urllib.parse import urlparse
+from collections import namedtuple
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# Setup URL mapping logger
+url_mapping_logger = logging.getLogger('url_mapping')
+url_mapping_logger.setLevel(logging.INFO)
+url_mapping_handler = logging.FileHandler('so2ghd.log')
+url_mapping_formatter = logging.Formatter('%(message)s')
+url_mapping_handler.setFormatter(url_mapping_formatter)
+url_mapping_logger.addHandler(url_mapping_handler)
+url_mapping_logger.propagate = False  # Prevent messages from going to root logger
+
+Category = namedtuple('Category', ['id', 'name'])
 
 def load_json(filename: str) -> List[Dict[str, Any]]:
     """Load and parse a JSON file"""
@@ -174,6 +186,7 @@ def create_discussion(token, g, repo, owner, name, title: str, body: str, catego
         discussion {
           id
           number
+          url
         }
       }
     }
@@ -189,11 +202,12 @@ def create_discussion(token, g, repo, owner, name, title: str, body: str, catego
     discussion = data['createDiscussion']['discussion']
     discussion_number = discussion['number']
     discussion_node_id = discussion['id']
+    discussion_url = discussion['url']
     logger.info(f"Created discussion #{discussion_number}: {title}")
     if labels_list:
         label_node_ids = get_label_node_ids(token, owner, name, labels_list)
         add_labels_to_discussion(token, discussion_node_id, label_node_ids)
-    return discussion_number
+    return discussion_number, discussion_url
 
 def add_comment(token, owner: str, name: str, discussion_number: int, body: str):
     """Add a comment to an existing discussion using GraphQL via requests. Returns the comment node ID if successful, else None."""
@@ -221,6 +235,7 @@ def add_comment(token, owner: str, name: str, discussion_number: int, body: str)
       }) {
         comment {
           id
+          url
         }
       }
     }
@@ -231,41 +246,42 @@ def add_comment(token, owner: str, name: str, discussion_number: int, body: str)
     }
     data = github_graphql_request(token, mutation, variables)
     logger.info(f"Added comment to discussion #{discussion_number}")
-    return data['addDiscussionComment']['comment']['id']
+    return data['addDiscussionComment']['comment']['id'], data['addDiscussionComment']['comment']['url']
 
-def find_discussion_by_title(token, owner: str, name: str, title: str):
+def find_discussion_by_title(token, owner: str, name: str, title: str, category: Optional[Category] = None):
     """Return (discussion_number, discussion_node_id) if a discussion with the given title exists, else None."""
+    if category:
+        logger.info(f"Searching for discussion in category '{category.name}'")
+    else:
+        logger.info("Searching for discussion in all categories")
+
     query = """
-    query($owner: String!, $name: String!) {
+    query($owner: String!, $name: String!, $categoryId: ID!) {
       repository(owner: $owner, name: $name) {
-        discussions(first: 100, orderBy: {field: CREATED_AT, direction: DESC}) {
+        discussions(first: 100, orderBy: {field: CREATED_AT, direction: DESC}, categoryId: $categoryId) {
           nodes {
             id
-            number
             title
           }
         }
       }
     }
     """
-    variables = {'owner': owner, 'name': name}
+    variables = {'owner': owner, 'name': name, 'categoryId': category.id if category else None}
     data = github_graphql_request(token, query, variables)
     discussions = data['repository']['discussions']['nodes']
     for d in discussions:
         if d['title'].strip() == title.strip():
-            return d['number'], d['id']
-    return None, None
+            return d['id']
+    return None
 
-def clean_repo_discussions(token, owner: str, name: str, category_name: str = None):
+def clean_repo_discussions(token, owner: str, name: str, category: Optional[Category] = None):
     """Delete all discussions, their comments, and remove all labels from the repo. Optionally filter by category."""
 
-    category_id = get_category_id(token, owner, name, category_name) if category_name else None
-
-    if not category_id:
-      logger.warning("Cleaning all discussions, comments, and labels from the repository!")
+    if not category:
+        logger.warning("Cleaning all discussions, comments, and labels from the repository!")
     else:
-      logger.warning(f"Cleaning discussions in category '{category_name}', comments, and labels from the repository!")
-      
+        logger.warning(f"Cleaning discussions in category '{category.name}', comments, and labels from the repository!")
 
     has_next_page = True
     end_cursor = None
@@ -297,7 +313,7 @@ def clean_repo_discussions(token, owner: str, name: str, category_name: str = No
           }
         }
         """
-        variables = {'owner': owner, 'name': name, 'after': end_cursor, 'categoryId': category_id}
+        variables = {'owner': owner, 'name': name, 'after': end_cursor, 'categoryId': category.id if category else None}
         data = github_graphql_request(token, query, variables)
         repo = data['repository']
         discussions = repo['discussions']['nodes']
@@ -394,6 +410,23 @@ def process_image_fields(text, local_image_folder, owner, name, repo, logger):
             logger.warning(f"Local image not found for URL {url}, skipping upload.")
     return replace_image_urls(text, url_map)
 
+def get_url_redir_str(stackoverflow_url: str, github_discussion_url: str):
+    parsed_url = urlparse(stackoverflow_url)
+    redirect_path = parsed_url.path + '#' + parsed_url.fragment if parsed_url.fragment else parsed_url.path
+    return f'redir {redirect_path} {github_discussion_url} permanent'
+
+def log_url_mapping(stackoverflow_urls: list[str], github_discussion_url: str):
+    """Log the mapping between Stack Overflow and GitHub Discussion URLs
+    This mapping will be used for redirects in Caddy server
+    StackOverflow URLs have multiple links for an entry, a link plus a share link.
+    So we'll log all of them
+    """
+    for stackoverflow_url in stackoverflow_urls:
+      if stackoverflow_url:
+          url_mapping_logger.info(get_url_redir_str(stackoverflow_url, github_discussion_url))
+      else:
+          logger.warning("Empty Stack Overflow URL found, skipping logging for this entry.")
+
 def main():
     parser = argparse.ArgumentParser(description='Populate GitHub Discussions from Q&A data')
     parser.add_argument('--repo', required=True, help='Repository in format owner/name')
@@ -410,6 +443,9 @@ def main():
     args = parser.parse_args()
 
   
+    SO_LINK = "link"
+    SO_SHARE_LINK = "share_link"
+
     installation_id = os.environ.get("GHD_INSTALLATION_ID")
     app_id = os.environ.get("GHD_APP_ID")
     # This should be the path to the private key file
@@ -443,9 +479,13 @@ def main():
 
     token = auth.token
 
+    # Get discussion category ID
+    category_id = get_category_id(token, owner, name, args.category)
+    category = Category(category_id, args.category)
+
     # Clean repository discussions, comments, and labels if --clean or --clean-only flag is set
     if args.clean or args.clean_only:
-        clean_repo_discussions(token, owner, name, args.category if args.clean_category else None)
+        clean_repo_discussions(token, owner, name, category if args.clean_category else None)
         if args.clean_only:
             logger.info('Cleanup complete. Exiting due to --clean-only flag.')
             return
@@ -461,9 +501,6 @@ def main():
     for tag_name, description in tag_to_description.items():
         if tag_name not in existing_labels:
             create_label(repo, tag_name, description)
-
-    # Get discussion category ID
-    category_id = get_category_id(token, owner, name, args.category)
 
     logger.info(f"category_id for '{args.category}': {category_id}")
 
@@ -531,16 +568,24 @@ def main():
             question_comments_sorted = sorted(question_comments, key=lambda c: c.get('creation_date', 0))
 
             # Check for existing discussion by title
-            existing_number, existing_node_id = find_discussion_by_title(token, owner, name, title)
+            existing_node_id = find_discussion_by_title(token, owner, name, title, category if args.clean_category else None)
             if existing_node_id:
                 logger.info(f"Discussion already exists for title '{title}', applying labels only.")
+                # logging for url mapping is also not done because it wouldn't map answer URLS
+                # presumably this mapping was done in a previous run
                 if tags:
                     label_node_ids = get_label_node_ids(token, owner, name, tags)
                     add_labels_to_discussion(token, existing_node_id, label_node_ids)
                 continue
 
             # Create discussion
-            discussion_number = create_discussion(token, g, repo, owner, name, title, body, category_id, tags)
+            discussion_number, discussion_url = create_discussion(token, g, repo, owner, name, title, body, category_id, tags)
+            
+            # Links
+            stackoverflow_urls = []
+            stackoverflow_urls.append(question.get(SO_LINK))
+            stackoverflow_urls.append(question.get(SO_SHARE_LINK))
+            log_url_mapping(stackoverflow_urls, discussion_url)
 
             # Add question comments (chronological order)
             for comment in question_comments_sorted:
@@ -617,9 +662,15 @@ def main():
                 # Remove accepted answer header from body (handled by API now)
                 answer_body = answer_header + answer_body
 
-                comment_id = add_comment(token, owner, name, discussion_number, answer_body)
+                comment_id, comment_url = add_comment(token, owner, name, discussion_number, answer_body)
                 if comment_id and 'answer_id' in answer:
                     answer_id_to_comment_id[answer['answer_id']] = comment_id
+
+                answer_urls = []    
+                answer_urls.append(answer.get(SO_LINK))
+                answer_urls.append(answer.get(SO_SHARE_LINK))
+
+                log_url_mapping(answer_urls, comment_url)
 
                 # Also add any comments on the answer
                 for comment in answer.get('comments', []):
