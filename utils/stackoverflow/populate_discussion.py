@@ -2,7 +2,7 @@ import json
 import os
 import logging
 import argparse
-from github import Github
+from github import Github, Auth
 from github.GithubException import GithubException
 from typing import Dict, List, Any
 import requests
@@ -256,16 +256,24 @@ def find_discussion_by_title(token, owner: str, name: str, title: str):
             return d['number'], d['id']
     return None, None
 
-def clean_repo_discussions(token, owner: str, name: str):
-    """Delete all discussions, their comments, and remove all labels from the repo."""
-    logger.warning("Cleaning all discussions, comments, and labels from the repository!")
+def clean_repo_discussions(token, owner: str, name: str, category_name: str = None):
+    """Delete all discussions, their comments, and remove all labels from the repo. Optionally filter by category."""
+
+    category_id = get_category_id(token, owner, name, category_name) if category_name else None
+
+    if not category_id:
+      logger.warning("Cleaning all discussions, comments, and labels from the repository!")
+    else:
+      logger.warning(f"Cleaning discussions in category '{category_name}', comments, and labels from the repository!")
+      
+
     has_next_page = True
     end_cursor = None
     while has_next_page:
         query = """
-        query($owner: String!, $name: String!, $after: String) {
+        query($owner: String!, $name: String!, $after: String, $categoryId: ID) {
           repository(owner: $owner, name: $name) {
-            discussions(first: 50, after: $after) {
+            discussions(first: 50, after: $after, categoryId: $categoryId) {
               nodes {
                 id
                 number
@@ -289,7 +297,7 @@ def clean_repo_discussions(token, owner: str, name: str):
           }
         }
         """
-        variables = {'owner': owner, 'name': name, 'after': end_cursor}
+        variables = {'owner': owner, 'name': name, 'after': end_cursor, 'categoryId': category_id}
         data = github_graphql_request(token, query, variables)
         repo = data['repository']
         discussions = repo['discussions']['nodes']
@@ -396,31 +404,51 @@ def main():
     parser.add_argument('--limit', type=int, help='Limit number of questions to process')
     parser.add_argument('--image-folder', default='discussion_images_temp', help='Path to local folder containing images')
     group = parser.add_mutually_exclusive_group()
-    group.add_argument('--clean', action='store_true', help='Delete all discussions, comments, and labels before import')
-    group.add_argument('--clean-only', action='store_true', help='Delete all discussions, comments, and labels, then exit')
+    group.add_argument('--clean', action='store_true', help='Delete all discussions, comments, and labels in the repo before import')
+    group.add_argument('--clean-only', action='store_true', help='Delete all discussions, comments, and labels, in the repo then exit')
+    parser.add_argument('--clean-category', action='store_true', help='Used with --category and --clean or --clean-only to delete all discussions, comments, and labels in the specified category')
     args = parser.parse_args()
 
-    # Get GitHub token from environment
-    token = os.environ.get("GITHUB_TOKEN")
-    if not token:
-        raise ValueError("GITHUB_TOKEN environment variable must be set")
+  
+    installation_id = os.environ.get("GHD_INSTALLATION_ID")
+    app_id = os.environ.get("GHD_APP_ID")
+    # This should be the path to the private key file
+    private_key = os.environ.get("GHD_PRIVATE_KEY")
 
+    if not installation_id or not app_id or not private_key:
+        raise ValueError("GHD_INSTALLATION_ID, GHD_APP_ID, and GHD_PRIVATE_KEY environment variables must be set")
+    
+    if not installation_id.isdigit() or not app_id.isdigit():
+        raise ValueError("GHD_INSTALLATION_ID and GHD_APP_ID must be numeric")
+    
+    if args.clean_category and (not args.category or not (args.clean or args.clean_only)):
+        raise ValueError("When using --clean-category, you must also specify --category and either --clean or --clean-only")
+
+    with open(private_key, "r") as key_file:
+        private_key = key_file.read()
+
+    auth = Auth.AppAuth(int(app_id), private_key).get_installation_auth(int(installation_id))
+
+    # Initialize PyGithub client
+    g = Github(auth=auth)
+    
     repo_parts = args.repo.split('/')
     if len(repo_parts) != 2:
         raise ValueError("Repository must be in format 'owner/name'")
 
     owner, name = repo_parts
+    repo = g.get_repo(f"{owner}/{name}")
+
+    logger.info(f"Using repo '{repo.full_name}'")
+
+    token = auth.token
 
     # Clean repository discussions, comments, and labels if --clean or --clean-only flag is set
     if args.clean or args.clean_only:
-        clean_repo_discussions(token, owner, name)
+        clean_repo_discussions(token, owner, name, args.category if args.clean_category else None)
         if args.clean_only:
             logger.info('Cleanup complete. Exiting due to --clean-only flag.')
             return
-
-    # Initialize PyGithub client
-    g = Github(token)
-    repo = g.get_repo(f"{owner}/{name}")
 
     # Load data
     questions = load_json(args.questions_file)
@@ -436,6 +464,8 @@ def main():
 
     # Get discussion category ID
     category_id = get_category_id(token, owner, name, args.category)
+
+    logger.info(f"category_id for '{args.category}': {category_id}")
 
     # Process questions with limit if specified
     if args.limit:

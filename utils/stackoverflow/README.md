@@ -86,16 +86,18 @@ A script that helps migrate Stack Overflow content to GitHub Discussions. It cre
 ### Requirements
 * Python 3.x
 * Dependencies listed in requirements.txt
-* GitHub Personal Access Token with repo permissions
+* GitHub App with appropriate permissions (Contents, Discussions, Metadata)
 
 ### Setup
 1. Install the required dependencies:
    ```
    pip install -r requirements.txt
    ```
-2. Set your GitHub token as an environment variable:
+2. Set up GitHub App authentication by setting these environment variables:
    ```
-   export GITHUB_TOKEN=your_github_personal_access_token
+   export GHD_INSTALLATION_ID=your_installation_id
+   export GHD_APP_ID=your_github_app_id
+   export GHD_PRIVATE_KEY=/path/to/your/private-key.pem
    ```
 
 ### Usage
@@ -112,10 +114,22 @@ python populate_discussion.py --repo OWNER/REPO --category CATEGORY_NAME [option
 - `--image-folder`: Path to local folder containing images (default: discussion_images_temp)
 - `--clean`: Delete all discussions, comments, and labels before import
 - `--clean-only`: Delete all discussions, comments, and labels, then exit
+- `--clean-category`: Used with --category and --clean or --clean-only to delete discussions in the specified category only
 
 #### Example
 ```
 python populate_discussion.py --repo bcgov/developer-experience-team --category Q&A --limit 10
+```
+
+#### Clean Operations
+To clean discussions in a specific category before importing:
+```
+python populate_discussion.py --repo bcgov/developer-experience-team --category Q&A --clean --clean-category
+```
+
+To clean all discussions and exit:
+```
+python populate_discussion.py --repo bcgov/developer-experience-team --category Q&A --clean-only
 ```
 
 ### Features
