@@ -1,3 +1,5 @@
 *.json
 so_exported_images/
 *.pem
+__pycache__/
+*.log
