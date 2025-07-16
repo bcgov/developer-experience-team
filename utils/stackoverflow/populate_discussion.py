@@ -432,10 +432,10 @@ def log_url_mapping(stackoverflow_urls: List[str], github_discussion_url: str):
     So we'll log all of them
     """
     for stackoverflow_url in stackoverflow_urls:
-      if stackoverflow_url:
-        url_mapping_logger.info(get_url_redir_str(stackoverflow_url, github_discussion_url))
-      else:
-        logger.warning("Empty Stack Overflow URL found, skipping logging for this entry.")
+        if stackoverflow_url:
+            url_mapping_logger.info(get_url_redir_str(stackoverflow_url, github_discussion_url))
+        else:
+            logger.warning("Empty Stack Overflow URL found, skipping logging for this entry.")
 
 def main():
     parser = argparse.ArgumentParser(description='Populate GitHub Discussions from Q&A data')
