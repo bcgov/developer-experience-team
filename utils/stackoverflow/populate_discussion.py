@@ -8,7 +8,9 @@ from typing import Dict, List, Any, Optional
 import requests
 import re
 from urllib.parse import urlparse
+import html
 from collections import namedtuple
+from datetime import datetime, timezone
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -173,7 +175,7 @@ def add_labels_to_discussion(token, discussion_node_id: str, label_node_ids: Lis
     }
     github_graphql_request(token, mutation, variables)
 
-def create_discussion(token, g, repo, owner, name, title: str, body: str, category_id: str, labels_list: List[str]):
+def create_discussion(token, owner, name, title: str, body: str, category_id: str, labels_list: List[str]):
     """Create a new discussion using GraphQL, then add labels via addLabelsToLabelable."""
     mutation = """
     mutation($repositoryId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
@@ -396,8 +398,16 @@ def replace_image_urls(text, url_map):
     text = re.sub(r'<img [^>]*src=["\']([^"\'>]+)["\']', html_repl, text)
     return text
 
+def decode_html_entities(text: str) -> str:
+    """Decode HTML entities like &#39; to their proper characters."""
+    if not text:
+        return text
+    return html.unescape(text)
+
 def process_image_fields(text, local_image_folder, owner, name, repo, logger):
     """Extract image URLs, upload local images to GitHub, and replace URLs in the text."""
+    # Decode HTML entities first
+    text = decode_html_entities(text)
     img_urls = extract_image_urls(text)
     url_map = {}
     for url in img_urls:
@@ -446,27 +456,7 @@ def main():
     SO_LINK = "link"
     SO_SHARE_LINK = "share_link"
 
-    installation_id = os.environ.get("GHD_INSTALLATION_ID")
-    app_id = os.environ.get("GHD_APP_ID")
-    # This should be the path to the private key file
-    private_key = os.environ.get("GHD_PRIVATE_KEY")
-
-    if not installation_id or not app_id or not private_key:
-        raise ValueError("GHD_INSTALLATION_ID, GHD_APP_ID, and GHD_PRIVATE_KEY environment variables must be set")
-    
-    if not installation_id.isdigit() or not app_id.isdigit():
-        raise ValueError("GHD_INSTALLATION_ID and GHD_APP_ID must be numeric")
-    
-    if args.clean_category and (not args.category or not (args.clean or args.clean_only)):
-        raise ValueError("When using --clean-category, you must also specify --category and either --clean or --clean-only")
-
-    with open(private_key, "r") as key_file:
-        private_key = key_file.read()
-
-    auth = Auth.AppAuth(int(app_id), private_key).get_installation_auth(int(installation_id))
-
-    # Initialize PyGithub client
-    g = Github(auth=auth)
+    token, g = initialize_github_auth()
     
     repo_parts = args.repo.split('/')
     if len(repo_parts) != 2:
@@ -477,7 +467,7 @@ def main():
 
     logger.info(f"Using repo '{repo.full_name}'")
 
-    token = auth.token
+
 
     # Get discussion category ID
     category_id = get_category_id(token, owner, name, args.category)
@@ -520,7 +510,7 @@ def main():
     for i, question in enumerate(questions_sorted):
         try:
             # Extract question data
-            title = question.get('title', f"Question #{i+1}")
+            title = decode_html_entities(question.get('title', f"Question #{i+1}"))
             body = question.get('body', '')
 
             # Use body_markdown if available, fall back to body_html or just body
@@ -528,6 +518,9 @@ def main():
                 body = question['body_markdown']
             elif 'body_html' in question:
                 body = question['body_html']
+
+            # Decode HTML entities
+            body = decode_html_entities(body)
 
             # --- IMAGE HANDLING FOR QUESTION BODY ---
             body = process_image_fields(body, local_image_folder, owner, name, repo, logger)
@@ -546,16 +539,7 @@ def main():
             if not author_name:
                 author_name = "Unknown User"
             creation_date = question.get('creation_date')
-            if creation_date:
-                # If it's a timestamp, convert to readable date
-                try:
-                    import datetime
-                    if isinstance(creation_date, (int, float)):
-                        creation_date = datetime.datetime.utcfromtimestamp(creation_date).strftime('%Y-%m-%d %H:%M:%S UTC')
-                except Exception:
-                    pass
-            else:
-                creation_date = "Unknown Date"
+            creation_date = get_readable_date(creation_date)
             # Format author and date as a markdown NOTE block
             header = f"> [!NOTE]\n> Originally asked in BC Gov Stack Overflow by {author_name} on {creation_date}\n\n"
             body = header + body
@@ -579,7 +563,7 @@ def main():
                 continue
 
             # Create discussion
-            discussion_number, discussion_url = create_discussion(token, g, repo, owner, name, title, body, category_id, tags)
+            discussion_number, discussion_url = create_discussion(token, owner, name, title, body, category_id, tags)
             
             # Links
             stackoverflow_urls = []
@@ -589,7 +573,7 @@ def main():
 
             # Add question comments (chronological order)
             for comment in question_comments_sorted:
-                comment_body = comment.get('body', '')
+                comment_body = decode_html_entities(comment.get('body', ''))
                 # --- IMAGE HANDLING FOR QUESTION COMMENT ---
                 comment_body = process_image_fields(comment_body, local_image_folder, owner, name, repo, logger)
                 # Add commenter info and creation date if available
@@ -605,15 +589,7 @@ def main():
                 if not comment_author:
                     comment_author = "Unknown User"
                 comment_date = comment.get('creation_date')
-                if comment_date:
-                    try:
-                        import datetime
-                        if isinstance(comment_date, (int, float)):
-                            comment_date = datetime.datetime.utcfromtimestamp(comment_date).strftime('%Y-%m-%d %H:%M:%S UTC')
-                    except Exception:
-                        pass
-                else:
-                    comment_date = "Unknown Date"
+                comment_date = get_readable_date(comment_date)
                 comment_header = f"> [!NOTE]\n> Comment by {comment_author} on {comment_date}\n\n"
                 comment_body = comment_header + comment_body
                 add_comment(token, owner, name, discussion_number, comment_body)
@@ -632,6 +608,9 @@ def main():
                 elif 'body_html' in answer:
                     answer_body = answer['body_html']
 
+                # Decode HTML entities
+                answer_body = decode_html_entities(answer_body)
+
                 # --- IMAGE HANDLING FOR ANSWER BODY ---
                 answer_body = process_image_fields(answer_body, local_image_folder, owner, name, repo, logger)
 
@@ -648,15 +627,7 @@ def main():
                 if not answer_author:
                     answer_author = "Unknown User"
                 answer_date = answer.get('creation_date')
-                if answer_date:
-                    try:
-                        import datetime
-                        if isinstance(answer_date, (int, float)):
-                            answer_date = datetime.datetime.utcfromtimestamp(answer_date).strftime('%Y-%m-%d %H:%M:%S UTC')
-                    except Exception:
-                        pass
-                else:
-                    answer_date = "Unknown Date"
+                answer_date = get_readable_date(answer_date)
                 answer_header = f"> [!NOTE]\n> Originally answered by {answer_author} on {answer_date}\n\n"
 
                 # Remove accepted answer header from body (handled by API now)
@@ -674,7 +645,7 @@ def main():
 
                 # Also add any comments on the answer
                 for comment in answer.get('comments', []):
-                    comment_body = comment.get('body', '')
+                    comment_body = decode_html_entities(comment.get('body', ''))
 
                     # --- IMAGE HANDLING FOR ANSWER COMMENT ---
                     comment_body = process_image_fields(comment_body, local_image_folder, owner, name, repo, logger)
@@ -692,15 +663,7 @@ def main():
                     if not comment_author:
                         comment_author = "Unknown User"
                     comment_date = comment.get('creation_date')
-                    if comment_date:
-                        try:
-                            import datetime
-                            if isinstance(comment_date, (int, float)):
-                                comment_date = datetime.datetime.utcfromtimestamp(comment_date).strftime('%Y-%m-%d %H:%M:%S UTC')
-                        except Exception:
-                            pass
-                    else:
-                        comment_date = "Unknown Date"
+                    comment_date = get_readable_date(comment_date)
                     comment_header = f"> [!NOTE]\n> Comment by {comment_author} on {comment_date}\n\n"
                     comment_body = comment_header + comment_body
 
@@ -712,6 +675,44 @@ def main():
         except Exception as e:
             logger.error(f"Error processing question #{i+1}: {e}")
             continue
+
+def get_readable_date(the_date):
+    """Convert creation_date to a readable string format."""
+    if the_date:
+        try:
+            if isinstance(the_date, (int, float)):
+                the_date = datetime.fromtimestamp(the_date, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S %Z')
+        except Exception:
+            pass
+    else:
+        the_date = "Unknown Date"
+    return the_date
+
+def initialize_github_auth() -> tuple: 
+    """Initialize GitHub authentication using environment variables for App Auth.
+    Returns:
+        tuple: (token, Github client)
+    """
+    installation_id = os.environ.get("GHD_INSTALLATION_ID")
+    app_id = os.environ.get("GHD_APP_ID")
+    # This should be the path to the private key file
+    private_key = os.environ.get("GHD_PRIVATE_KEY")
+
+    if not installation_id or not app_id or not private_key:
+        raise ValueError("GHD_INSTALLATION_ID, GHD_APP_ID, and GHD_PRIVATE_KEY environment variables must be set")
+    
+    if not installation_id.isdigit() or not app_id.isdigit():
+        raise ValueError("GHD_INSTALLATION_ID and GHD_APP_ID must be numeric")
+    
+    with open(private_key, "r") as key_file:
+        private_key = key_file.read()
+
+    auth = Auth.AppAuth(int(app_id), private_key).get_installation_auth(int(installation_id))
+
+    # Initialize PyGithub client
+    g = Github(auth=auth)
+    token = auth.token
+    return token, g
 
 def mark_discussion_comment_as_answer(token, comment_node_id):
     """Mark a discussion comment as the accepted answer using the GraphQL mutation."""
