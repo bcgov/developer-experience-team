@@ -247,25 +247,34 @@ def find_discussion_by_title(github_graphql, owner: str, name: str, title: str, 
         logger.info(f"Searching for discussion in category '{category.name}'")
     else:
         logger.info("Searching for discussion in all categories")
-
-    query = """
-    query($owner: String!, $name: String!, $categoryId: ID) {
-      repository(owner: $owner, name: $name) {
-        discussions(first: 100, orderBy: {field: CREATED_AT, direction: DESC}, categoryId: $categoryId) {
-          nodes {
-            id
-            title
+    has_next_page = True
+    end_cursor = None
+    while has_next_page:
+      query = """
+      query($owner: String!, $name: String!, $after: String, $categoryId: ID) {
+        repository(owner: $owner, name: $name) {
+          discussions(first: 100, after: $after, orderBy: {field: CREATED_AT, direction: DESC}, categoryId: $categoryId) {
+            nodes {
+              id
+              title
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
           }
         }
       }
-    }
-    """
-    variables = {'owner': owner, 'name': name, 'categoryId': category.id if category else None}
-    data = github_graphql.github_graphql_request(query, variables)
-    discussions = data['repository']['discussions']['nodes']
-    for d in discussions:
-        if d['title'].strip() == title.strip():
-            return d['id']
+      """
+      variables = {'owner': owner, 'name': name, 'after': end_cursor, 'categoryId': category.id if category else None}
+      data = github_graphql.github_graphql_request(query, variables)
+      discussions = data['repository']['discussions']['nodes']
+      logger.debug(f"Found {len(discussions)} discussions in repository '{owner}/{name}'")
+      for d in discussions:
+          if d['title'].strip() == title.strip():
+              return d['id']
+      has_next_page = data['repository']['discussions']['pageInfo']['hasNextPage']
+      end_cursor = data['repository']['discussions']['pageInfo']['endCursor']
     return None
 
 def clean_repo_discussions(github_graphql, owner: str, name: str, category: Optional[Category] = None):
