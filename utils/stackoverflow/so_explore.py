@@ -16,4 +16,6 @@ dd.sql("select * from './questions_answers_comments.json' as questions where que
 # dd.sql("select answers.answer_id from './questions_answers_comments.json'" where len(answers) ).show()
 # dd.sql("select answer_id from (select answers from './questions_answers_comments.json')").show()
 # dd.sql("select users.email, count(*) as answer_count from (select unnest(questions.answers, recursive := true) from './questions_answers_comments.json' as questions) as answers, './users.json' as users where answers.user_id = users.user_id group by users.email order by answer_count desc").show()
-#dd.sql("select tags.name, tags.count, age(to_timestamp(tags.last_activity_date)) from './tags.json' as tags order by tags.last_activity_date desc, tags.count desc").show()
+# dd.sql("select tags.name, tags.count, age(to_timestamp(tags.last_activity_date)) from './tags.json' as tags order by tags.last_activity_date desc, tags.count desc").show()
+# dd.sql("select questions.question_id, questions.title, from './discussions_to_add.json' as questions where list_contains(questions.tags, 'openshift')").show()
+# dd.sql("select questions.question_id, questions.title, questions.tags from './discussions_to_add.json' as questions order by questions.question_id").show()
