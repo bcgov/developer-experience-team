@@ -1,6 +1,6 @@
 import unittest
 from datetime import datetime, timezone
-from populate_discussion import get_url_redir_str, get_readable_date, decode_html_entities
+from populate_discussion import get_url_redir_str, get_readable_date, decode_html_entities, TagsToIgnore
 
 
 class TestGetUrlRedirStr(unittest.TestCase):
@@ -240,6 +240,133 @@ class TestDecodeHtmlEntities(unittest.TestCase):
         expected = "  I'm   testing   spaces  "
         result = decode_html_entities(text)
         self.assertEqual(result, expected)
+
+
+class TestTagsToIgnore(unittest.TestCase):
+    """Unit tests for the TagsToIgnore class."""
+
+    def test_init_with_none(self):
+        """Test initialization with None."""
+        tags_helper = TagsToIgnore(None)
+        self.assertIsNone(tags_helper.tags_to_ignore)
+
+    def test_init_with_empty_list(self):
+        """Test initialization with an empty list."""
+        tags_helper = TagsToIgnore([])
+        self.assertEqual(tags_helper.tags_to_ignore, [])
+
+    def test_init_with_one_tag(self):
+        """Test initialization with a list containing one tag."""
+        tags_to_ignore = ["test-tag"]
+        tags_helper = TagsToIgnore(tags_to_ignore)
+        self.assertEqual(tags_helper.tags_to_ignore, ["test-tag"])
+
+    def test_init_with_two_tags(self):
+        """Test initialization with a list containing two tags."""
+        tags_to_ignore = ["tag1", "tag2"]
+        tags_helper = TagsToIgnore(tags_to_ignore)
+        self.assertEqual(tags_helper.tags_to_ignore, ["tag1", "tag2"])
+
+    def test_init_with_five_tags(self):
+        """Test initialization with a list containing five tags."""
+        tags_to_ignore = ["tag1", "tag2", "tag3", "tag4", "tag5"]
+        tags_helper = TagsToIgnore(tags_to_ignore)
+        self.assertEqual(tags_helper.tags_to_ignore, ["tag1", "tag2", "tag3", "tag4", "tag5"])
+
+    def test_should_ignore_with_none_tags_to_ignore(self):
+        """Test should_ignore when tags_to_ignore is None."""
+        tags_helper = TagsToIgnore(None)
+        result = tags_helper.should_ignore(["any-tag"])
+        self.assertFalse(result)
+
+    def test_should_ignore_with_empty_tags_to_ignore(self):
+        """Test should_ignore when tags_to_ignore is empty list."""
+        tags_helper = TagsToIgnore([])
+        result = tags_helper.should_ignore(["any-tag"])
+        self.assertFalse(result)
+
+    def test_should_ignore_with_matching_tag(self):
+        """Test should_ignore when input contains a tag that should be ignored."""
+        tags_helper = TagsToIgnore(["ignore-me", "also-ignore"])
+        result = tags_helper.should_ignore(["keep-me", "ignore-me", "another-keep"])
+        self.assertTrue(result)
+
+    def test_should_ignore_with_no_matching_tags(self):
+        """Test should_ignore when input contains no tags that should be ignored."""
+        tags_helper = TagsToIgnore(["ignore-me", "also-ignore"])
+        result = tags_helper.should_ignore(["keep-me", "keep-this-too"])
+        self.assertFalse(result)
+
+    def test_should_ignore_with_all_matching_tags(self):
+        """Test should_ignore when all input tags should be ignored."""
+        tags_helper = TagsToIgnore(["ignore-me", "also-ignore"])
+        result = tags_helper.should_ignore(["ignore-me", "also-ignore"])
+        self.assertTrue(result)
+
+    def test_should_ignore_with_empty_input_tags(self):
+        """Test should_ignore when input tags list is empty."""
+        tags_helper = TagsToIgnore(["ignore-me"])
+        result = tags_helper.should_ignore([])
+        self.assertFalse(result)
+
+    def test_should_ignore_case_sensitivity(self):
+        """Test that should_ignore is case-sensitive."""
+        tags_helper = TagsToIgnore(["ignore-me"])
+        # Should not match due to case difference
+        result = tags_helper.should_ignore(["IGNORE-ME"])
+        self.assertFalse(result)
+        
+        # Should match exact case
+        result = tags_helper.should_ignore(["ignore-me"])
+        self.assertTrue(result)
+
+    def test_should_ignore_partial_match(self):
+        """Test that should_ignore doesn't do partial string matching."""
+        tags_helper = TagsToIgnore(["tag"])
+        # Should not match partial strings
+        result = tags_helper.should_ignore(["tag-extra"])
+        self.assertFalse(result)
+        
+        result = tags_helper.should_ignore(["prefix-tag"])
+        self.assertFalse(result)
+        
+        # Should match exact string
+        result = tags_helper.should_ignore(["tag"])
+        self.assertTrue(result)
+
+    
+
+    def test_should_ignore_special_characters(self):
+        """Test handling of special characters in tags."""
+        tags_helper = TagsToIgnore(["tag-with-dashes", "tag_with_underscores", "tag.with.dots"])
+        
+        result = tags_helper.should_ignore(["tag-with-dashes"])
+        self.assertTrue(result)
+        
+        result = tags_helper.should_ignore(["tag_with_underscores"])
+        self.assertTrue(result)
+        
+        result = tags_helper.should_ignore(["tag.with.dots"])
+        self.assertTrue(result)
+
+    def test_should_ignore_multiple_matches(self):
+        """Test should_ignore when input has multiple tags that should be ignored."""
+        tags_helper = TagsToIgnore(["ignore1", "ignore2", "ignore3"])
+        result = tags_helper.should_ignore(["keep", "ignore1", "ignore2", "another-keep"])
+        self.assertTrue(result)
+
+    def test_should_ignore_unicode_tags(self):
+        """Test handling of unicode characters in tags."""
+        tags_helper = TagsToIgnore(["été", "señor", "тест"])
+        
+        result = tags_helper.should_ignore(["été"])
+        self.assertTrue(result)
+        
+        result = tags_helper.should_ignore(["señor", "other"])
+        self.assertTrue(result)
+        
+        result = tags_helper.should_ignore(["тест"])
+        self.assertTrue(result)
 
 
 if __name__ == '__main__':

@@ -460,6 +460,10 @@ def main():
     group.add_argument('--clean', action='store_true', help='Delete all discussions, comments, and labels in the repo before import')
     group.add_argument('--clean-only', action='store_true', help='Delete all discussions, comments, and labels, in the repo then exit')
     parser.add_argument('--clean-category', action='store_true', help='Used with --category and --clean or --clean-only to delete all discussions, comments, and labels in the specified category')
+    parser.add_argument('--ignore-tags', 
+                         type=str, 
+                         nargs='+',
+                         help='List of tags to ignore (space-separated)')
     args = parser.parse_args()
 
     # Set the global API delay based on user preference
@@ -496,7 +500,9 @@ def main():
         if args.clean_only:
             logger.info('Cleanup complete. Exiting due to --clean-only flag.')
             return
-
+          
+    tags_to_ignore_helper = TagsToIgnore(args.ignore_tags if args.ignore_tags else None)
+    
     # Load data
     questions = load_json(args.questions_file)
     tags_data = load_json(args.tags_file)
@@ -506,7 +512,7 @@ def main():
     tag_to_description = {tag['name']: tag.get('description', '') for tag in tags_data}
 
     for tag_name, description in tag_to_description.items():
-        if tag_name not in existing_labels:
+        if tag_name not in existing_labels and not tags_to_ignore_helper.should_ignore([tag_name]):
             create_label(repo, tag_name, description)
 
     logger.info(f"category_id for '{args.category}': {category_id}")
@@ -526,8 +532,16 @@ def main():
     # Create discussions and comments
     for i, question in enumerate(questions_sorted):
         try:
+            
             # Extract question data
             title = decode_html_entities(question.get('title', f"Question #{i+1}"))
+            
+            # Extract tags
+            tags = question.get('tags', [])
+            if tags_to_ignore_helper.should_ignore(tags):
+                logger.info(f"Skipping question {question.get('question_id', 'Unknown ID')} - {title} due to its tags containing ignored tag(s): {', '.join(tags)}")
+                continue
+
             body = question.get('body', '')
 
             # Use body_markdown if available, fall back to body_html or just body
@@ -560,9 +574,6 @@ def main():
             # Format author and date as a markdown NOTE block
             header = f"> [!NOTE]\n> Originally asked in BC Gov Stack Overflow by {author_name} on {creation_date}\n\n"
             body = header + body
-
-            # Extract tags
-            tags = question.get('tags', [])
 
             # Sort comments by creation_date (chronological order)
             question_comments = question.get('comments', [])
@@ -721,6 +732,33 @@ def mark_discussion_comment_as_answer(github_graphql, comment_node_id):
     data = github_graphql.github_graphql_request(mutation, variables)
     logger.info(f"Marked comment {comment_node_id} as accepted answer.")
     return True
+
+
+class TagsToIgnore:
+    """Helper class to manage tags that should be ignored during migration."""
+
+    def __init__(self, tags_to_ignore: list[str] = None):
+        """Initialize tags to ignore.
+        
+        Args:
+            tags_to_ignore: List of tags to ignore
+        """
+        self.tags_to_ignore = tags_to_ignore
+
+        if self.tags_to_ignore:
+            logger.info(f"Tags to ignore: {', '.join(self.tags_to_ignore)}")
+
+    def should_ignore(self, tags: list[str]) -> bool:
+        """Check if any of the given tags should be ignored.
+        
+        Args:
+            tags: List of tags to check
+
+        Returns:
+            True if any tag should be ignored, False otherwise
+        """
+
+        return self.tags_to_ignore and any(t in self.tags_to_ignore for t in tags)
 
 if __name__ == '__main__':
     main()
