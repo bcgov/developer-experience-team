@@ -80,7 +80,7 @@ class GitHubAuthManager:
         self._initialized = True
         
     def refresh_token(self):
-       self.initialize()
+        self.initialize()
     
     def get_token(self):
         """Get the GitHub token"""
