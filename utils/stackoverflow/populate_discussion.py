@@ -39,7 +39,7 @@ def setup_populate_discussion_logging():
     # Setup URL mapping logger
     url_mapping_logger = logging.getLogger('url_mapping')
     url_mapping_logger.setLevel(logging.INFO)
-        url_mapping_handler = logging.FileHandler(datetime.now().strftime('so2ghd_%d_%m_%Y_%H_%M_.log'))
+    url_mapping_handler = logging.FileHandler(datetime.now().strftime('so2ghd_%d_%m_%Y_%H_%M_.log'))
     url_mapping_formatter = logging.Formatter('%(message)s')
     url_mapping_handler.setFormatter(url_mapping_formatter)
     url_mapping_logger.addHandler(url_mapping_handler)
