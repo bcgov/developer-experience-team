@@ -450,7 +450,7 @@ def main():
         raise ValueError("Repository must be in format 'owner/name'")
     owner, name = repo_parts
     
-   # Initialize GitHub authentication
+    # Initialize GitHub authentication
     github_auth_manager = GitHubAuthManager()
     github_auth_manager.initialize()
     
