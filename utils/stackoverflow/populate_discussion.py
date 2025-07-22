@@ -5,27 +5,45 @@ import argparse
 from github import Github, Auth
 from github.GithubException import GithubException
 from typing import Dict, List, Any, Optional
-import requests
 import re
 from urllib.parse import urlparse
 import html
 from collections import namedtuple
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+import time
+from populate_discussion_helpers import RateLimiter, GitHubAuthManager, GraphQLHelper
 
-# Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Get logger for this module
 logger = logging.getLogger(__name__)
 
-# Setup URL mapping logger
+# Get URL mapping logger (but don't configure it unless we're the main script)
 url_mapping_logger = logging.getLogger('url_mapping')
-url_mapping_logger.setLevel(logging.INFO)
-url_mapping_handler = logging.FileHandler('so2ghd.log')
-url_mapping_formatter = logging.Formatter('%(message)s')
-url_mapping_handler.setFormatter(url_mapping_formatter)
-url_mapping_logger.addHandler(url_mapping_handler)
-url_mapping_logger.propagate = False  # Prevent messages from going to root logger
 
 Category = namedtuple('Category', ['id', 'name'])
+
+# Setup logging - only when running as main script
+def setup_populate_discussion_logging():
+    """Setup logging for populate_discussion.py when run as main script."""
+    # Configure root logger to handle all modules
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logger_file_handler = logging.FileHandler('populate_discussion.log')
+    logger_file_handler.setFormatter(formatter)
+    logger_console_handler = logging.StreamHandler()
+    logger_console_handler.setFormatter(formatter)
+    root_logger.addHandler(logger_file_handler)
+    root_logger.addHandler(logger_console_handler)
+
+    # Setup URL mapping logger
+    url_mapping_logger = logging.getLogger('url_mapping')
+    url_mapping_logger.setLevel(logging.INFO)
+        url_mapping_handler = logging.FileHandler(datetime.now().strftime('so2ghd_%d_%m_%Y_%H_%M_.log'))
+    url_mapping_formatter = logging.Formatter('%(message)s')
+    url_mapping_handler.setFormatter(url_mapping_formatter)
+    url_mapping_logger.addHandler(url_mapping_handler)
+    url_mapping_logger.propagate = False  # Prevent messages from going to root logger
 
 def load_json(filename: str) -> List[Dict[str, Any]]:
     """Load and parse a JSON file"""
@@ -52,31 +70,8 @@ def create_label(repo, name: str, description: str = None):
         logger.warning(f"Could not create label {name}. Error: {e}")
         return False
 
-def github_graphql_request(token, query, variables=None):
-    """Helper to make a GitHub GraphQL API request and handle errors."""
-    headers = {
-        'Authorization': f'bearer {token}',
-        'Accept': 'application/vnd.github+json'
-    }
-    response = requests.post(
-        'https://api.github.com/graphql',
-        json={'query': query, 'variables': variables or {}},
-        headers=headers
-    )
-    try:
-        result = response.json()
-    except Exception as e:
-        logger.error(f"Failed to parse GraphQL response: {e}")
-        raise
-    if 'errors' in result:
-        logger.error(f"GraphQL errors: {result['errors']}")
-        raise Exception(f"GraphQL errors: {result['errors']}")
-    if 'data' not in result:
-        logger.error(f"No data in GraphQL response: {result}")
-        raise Exception(f"No data in GraphQL response: {result}")
-    return result['data']
 
-def get_category_id(token, owner: str, name: str, category_name: str):
+def get_category_id(github_graphql, owner: str, name: str, category_name: str):
     """Get the ID of a discussion category by name using GraphQL via PyGitHub"""
     query = """
     query($owner: String!, $name: String!) {
@@ -94,14 +89,14 @@ def get_category_id(token, owner: str, name: str, category_name: str):
         'owner': owner,
         'name': name
     }
-    data = github_graphql_request(token, query, variables)
+    data = github_graphql.github_graphql_request(query, variables)
     categories = data['repository']['discussionCategories']['nodes']
     for category in categories:
         if category['name'] == category_name:
             return category['id']
     raise ValueError(f'Category {category_name} not found')
 
-def get_repo_node_id(token, owner: str, name: str):
+def get_repo_node_id(github_graphql, owner: str, name: str):
     """Fetch the repository node_id using a GraphQL query."""
     query = """
     query($owner: String!, $name: String!) {
@@ -111,10 +106,10 @@ def get_repo_node_id(token, owner: str, name: str):
     }
     """
     variables = {'owner': owner, 'name': name}
-    data = github_graphql_request(token, query, variables)
+    data = github_graphql.github_graphql_request(query, variables)
     return data['repository']['id']
 
-def get_label_node_ids(token, owner: str, name: str, label_names: List[str]) -> List[str]:
+def get_label_node_ids(github_graphql, owner: str, name: str, label_names: List[str]) -> List[str]:
     """Fetch label node IDs for the given label names via GraphQL (case-insensitive, strip whitespace, paginated)."""
     if not label_names:
         return []
@@ -139,7 +134,7 @@ def get_label_node_ids(token, owner: str, name: str, label_names: List[str]) -> 
         }
         """
         variables = {'owner': owner, 'name': name, 'after': end_cursor}
-        data = github_graphql_request(token, query, variables)
+        data = github_graphql.github_graphql_request(query, variables)
         label_data = data['repository']['labels']
         all_labels.extend(label_data['nodes'])
         has_next_page = label_data['pageInfo']['hasNextPage']
@@ -154,7 +149,7 @@ def get_label_node_ids(token, owner: str, name: str, label_names: List[str]) -> 
             logger.warning(f"Label '{label}' not found in repo, skipping. Available labels: {list(name_to_id.keys())}")
     return node_ids
 
-def add_labels_to_discussion(token, discussion_node_id: str, label_node_ids: List[str]):
+def add_labels_to_discussion(github_graphql, discussion_node_id: str, label_node_ids: List[str]):
     """Add labels to a discussion using addLabelsToLabelable mutation."""
     if not label_node_ids:
         return
@@ -173,9 +168,9 @@ def add_labels_to_discussion(token, discussion_node_id: str, label_node_ids: Lis
         'labelableId': discussion_node_id,
         'labelIds': label_node_ids
     }
-    github_graphql_request(token, mutation, variables)
+    github_graphql.github_graphql_request(mutation, variables)
 
-def create_discussion(token, owner, name, title: str, body: str, category_id: str, labels_list: List[str]):
+def create_discussion(github_graphql, owner, name, title: str, body: str, category_id: str, labels_list: List[str]):
     """Create a new discussion using GraphQL, then add labels via addLabelsToLabelable."""
     mutation = """
     mutation($repositoryId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
@@ -193,25 +188,25 @@ def create_discussion(token, owner, name, title: str, body: str, category_id: st
       }
     }
     """
-    repo_node_id = get_repo_node_id(token, owner, name)
+    repo_node_id = get_repo_node_id(github_graphql, owner, name)
     variables = {
         'repositoryId': repo_node_id,
         'categoryId': category_id,
         'title': title,
         'body': body
     }
-    data = github_graphql_request(token, mutation, variables)
+    data = github_graphql.github_graphql_request(mutation, variables)
     discussion = data['createDiscussion']['discussion']
     discussion_number = discussion['number']
     discussion_node_id = discussion['id']
     discussion_url = discussion['url']
     logger.info(f"Created discussion #{discussion_number}: {title}")
     if labels_list:
-        label_node_ids = get_label_node_ids(token, owner, name, labels_list)
-        add_labels_to_discussion(token, discussion_node_id, label_node_ids)
+        label_node_ids = get_label_node_ids(github_graphql, owner, name, labels_list)
+        add_labels_to_discussion(github_graphql, discussion_node_id, label_node_ids)
     return discussion_number, discussion_url
 
-def add_comment(token, owner: str, name: str, discussion_number: int, body: str):
+def add_comment(github_graphql, owner: str, name: str, discussion_number: int, body: str, reply_to_id: Optional[str] = None):
     """Add a comment to an existing discussion using GraphQL via requests. Returns the comment node ID if successful, else None."""
     query = """
     query($owner: String!, $name: String!, $number: Int!) {
@@ -227,13 +222,14 @@ def add_comment(token, owner: str, name: str, discussion_number: int, body: str)
         'name': name,
         'number': discussion_number
     }
-    data = github_graphql_request(token, query, variables)
+    data = github_graphql.github_graphql_request(query, variables)
     discussion_id = data['repository']['discussion']['id']
     mutation = """
-    mutation($discussionId: ID!, $body: String!) {
+    mutation($discussionId: ID!, $body: String!, $replyToId: ID) {
       addDiscussionComment(input: {
         discussionId: $discussionId,
-        body: $body
+        body: $body,
+        replyToId: $replyToId
       }) {
         comment {
           id
@@ -244,40 +240,50 @@ def add_comment(token, owner: str, name: str, discussion_number: int, body: str)
     """
     variables = {
         'discussionId': discussion_id,
-        'body': body
+        'body': body,
+        'replyToId': reply_to_id
     }
-    data = github_graphql_request(token, mutation, variables)
+    data = github_graphql.github_graphql_request(mutation, variables)
     logger.info(f"Added comment to discussion #{discussion_number}")
     return data['addDiscussionComment']['comment']['id'], data['addDiscussionComment']['comment']['url']
 
-def find_discussion_by_title(token, owner: str, name: str, title: str, category: Optional[Category] = None):
+def find_discussion_by_title(github_graphql, owner: str, name: str, title: str, category: Optional[Category] = None):
     """Return discussion_node_id if a discussion with the given title exists, else None."""
     if category:
         logger.info(f"Searching for discussion in category '{category.name}'")
     else:
         logger.info("Searching for discussion in all categories")
-
-    query = """
-    query($owner: String!, $name: String!, $categoryId: ID) {
-      repository(owner: $owner, name: $name) {
-        discussions(first: 100, orderBy: {field: CREATED_AT, direction: DESC}, categoryId: $categoryId) {
-          nodes {
-            id
-            title
+    has_next_page = True
+    end_cursor = None
+    while has_next_page:
+      query = """
+      query($owner: String!, $name: String!, $after: String, $categoryId: ID) {
+        repository(owner: $owner, name: $name) {
+          discussions(first: 100, after: $after, orderBy: {field: CREATED_AT, direction: DESC}, categoryId: $categoryId) {
+            nodes {
+              id
+              title
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
           }
         }
       }
-    }
-    """
-    variables = {'owner': owner, 'name': name, 'categoryId': category.id if category else None}
-    data = github_graphql_request(token, query, variables)
-    discussions = data['repository']['discussions']['nodes']
-    for d in discussions:
-        if d['title'].strip() == title.strip():
-            return d['id']
+      """
+      variables = {'owner': owner, 'name': name, 'after': end_cursor, 'categoryId': category.id if category else None}
+      data = github_graphql.github_graphql_request(query, variables)
+      discussions = data['repository']['discussions']['nodes']
+      logger.debug(f"Found {len(discussions)} discussions in repository '{owner}/{name}'")
+      for d in discussions:
+          if d['title'].strip() == title.strip():
+              return d['id']
+      has_next_page = data['repository']['discussions']['pageInfo']['hasNextPage']
+      end_cursor = data['repository']['discussions']['pageInfo']['endCursor']
     return None
 
-def clean_repo_discussions(token, owner: str, name: str, category: Optional[Category] = None):
+def clean_repo_discussions(github_graphql, owner: str, name: str, category: Optional[Category] = None):
     """Delete all discussions, their comments, and remove all labels from the repo. Optionally filter by category."""
 
     if not category:
@@ -316,7 +322,7 @@ def clean_repo_discussions(token, owner: str, name: str, category: Optional[Cate
         }
         """
         variables = {'owner': owner, 'name': name, 'after': end_cursor, 'categoryId': category.id if category else None}
-        data = github_graphql_request(token, query, variables)
+        data = github_graphql.github_graphql_request(query, variables)
         repo = data['repository']
         discussions = repo['discussions']['nodes']
         for d in discussions:
@@ -331,7 +337,7 @@ def clean_repo_discussions(token, owner: str, name: str, category: Optional[Cate
                 }
                 """
                 variables_rm = {'labelableId': discussion_id, 'labelIds': label_ids}
-                github_graphql_request(token, mutation, variables_rm)
+                github_graphql.github_graphql_request(mutation, variables_rm)
             for c in d['comments']['nodes']:
                 comment_id = c['id']
                 mutation = """
@@ -342,7 +348,7 @@ def clean_repo_discussions(token, owner: str, name: str, category: Optional[Cate
                 }
                 """
                 variables_del = {'id': comment_id}
-                github_graphql_request(token, mutation, variables_del)
+                github_graphql.github_graphql_request(mutation, variables_del)
             mutation = """
             mutation($id: ID!) {
               deleteDiscussion(input: {id: $id}) {
@@ -351,7 +357,7 @@ def clean_repo_discussions(token, owner: str, name: str, category: Optional[Cate
             }
             """
             variables_del = {'id': discussion_id}
-            github_graphql_request(token, mutation, variables_del)
+            github_graphql.github_graphql_request(mutation, variables_del)
         has_next_page = repo['discussions']['pageInfo']['hasNextPage']
         end_cursor = repo['discussions']['pageInfo']['endCursor']
 
@@ -438,6 +444,9 @@ def log_url_mapping(stackoverflow_urls: List[str], github_discussion_url: str):
             logger.warning("Empty Stack Overflow URL found, skipping logging for this entry.")
 
 def main():
+    # Setup logging for this script
+    setup_populate_discussion_logging()
+    
     parser = argparse.ArgumentParser(description='Populate GitHub Discussions from Q&A data')
     parser.add_argument('--repo', required=True, help='Repository in format owner/name')
     parser.add_argument('--category', required=True, help='Discussion category name')
@@ -446,36 +455,44 @@ def main():
     parser.add_argument('--tags-file', default='tags.json', help='Path to tags JSON file')
     parser.add_argument('--limit', type=int, help='Limit number of questions to process')
     parser.add_argument('--image-folder', default='discussion_images_temp', help='Path to local folder containing images')
+    parser.add_argument('--api-delay', type=float, default=1.0, help='Minimum seconds between API calls (default: 1.0)')
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--clean', action='store_true', help='Delete all discussions, comments, and labels in the repo before import')
     group.add_argument('--clean-only', action='store_true', help='Delete all discussions, comments, and labels, in the repo then exit')
     parser.add_argument('--clean-category', action='store_true', help='Used with --category and --clean or --clean-only to delete all discussions, comments, and labels in the specified category')
     args = parser.parse_args()
 
-  
+    # Set the global API delay based on user preference
+    rate_limiter = RateLimiter(min_interval=args.api_delay)
+    logger.info(f"Using API delay of {args.api_delay} seconds between requests")
+
     SO_LINK = "link"
     SO_SHARE_LINK = "share_link"
 
-    token, g = initialize_github_auth()
+    # Initialize GitHub authentication
+    github_auth_manager = GitHubAuthManager()
+    github_auth_manager.initialize()
+
+    github_graphql = GraphQLHelper(github_auth_manager, rate_limiter)
     
     repo_parts = args.repo.split('/')
     if len(repo_parts) != 2:
         raise ValueError("Repository must be in format 'owner/name'")
 
     owner, name = repo_parts
-    repo = g.get_repo(f"{owner}/{name}")
+    repo = github_auth_manager.get_client().get_repo(f"{owner}/{name}")
 
     logger.info(f"Using repo '{repo.full_name}'")
 
 
 
     # Get discussion category ID
-    category_id = get_category_id(token, owner, name, args.category)
+    category_id = get_category_id(github_graphql, owner, name, args.category)
     category = Category(category_id, args.category)
 
     # Clean repository discussions, comments, and labels if --clean or --clean-only flag is set
     if args.clean or args.clean_only:
-        clean_repo_discussions(token, owner, name, category if args.clean_category else None)
+        clean_repo_discussions(github_graphql, owner, name, category if args.clean_category else None)
         if args.clean_only:
             logger.info('Cleanup complete. Exiting due to --clean-only flag.')
             return
@@ -552,18 +569,18 @@ def main():
             question_comments_sorted = sorted(question_comments, key=lambda c: c.get('creation_date', 0))
 
             # Check for existing discussion by title
-            existing_node_id = find_discussion_by_title(token, owner, name, title, category if args.clean_category else None)
+            existing_node_id = find_discussion_by_title(github_graphql, owner, name, title, category)
             if existing_node_id:
                 logger.info(f"Discussion already exists for title '{title}', applying labels only.")
                 # logging for url mapping is also not done because it wouldn't map answer URLS
                 # presumably this mapping was done in a previous run
                 if tags:
-                    label_node_ids = get_label_node_ids(token, owner, name, tags)
-                    add_labels_to_discussion(token, existing_node_id, label_node_ids)
+                    label_node_ids = get_label_node_ids(github_graphql, owner, name, tags)
+                    add_labels_to_discussion(github_graphql, existing_node_id, label_node_ids)
                 continue
 
             # Create discussion
-            discussion_number, discussion_url = create_discussion(token, owner, name, title, body, category_id, tags)
+            discussion_number, discussion_url = create_discussion(github_graphql, owner, name, title, body, category_id, tags)
             
             # Links
             stackoverflow_urls = []
@@ -592,7 +609,7 @@ def main():
                 comment_date = get_readable_date(comment_date)
                 comment_header = f"> [!NOTE]\n> Comment by {comment_author} on {comment_date}\n\n"
                 comment_body = comment_header + comment_body
-                add_comment(token, owner, name, discussion_number, comment_body)
+                add_comment(github_graphql, owner, name, discussion_number, comment_body)
 
             # Add answers as comments (chronological order)
             accepted_answer_id = question.get('accepted_answer_id')
@@ -633,14 +650,13 @@ def main():
                 # Remove accepted answer header from body (handled by API now)
                 answer_body = answer_header + answer_body
 
-                comment_id, comment_url = add_comment(token, owner, name, discussion_number, answer_body)
+                comment_id, comment_url = add_comment(github_graphql, owner, name, discussion_number, answer_body)
                 if comment_id and 'answer_id' in answer:
                     answer_id_to_comment_id[answer['answer_id']] = comment_id
 
                 answer_urls = []    
                 answer_urls.append(answer.get(SO_LINK))
                 answer_urls.append(answer.get(SO_SHARE_LINK))
-
                 log_url_mapping(answer_urls, comment_url)
 
                 # Also add any comments on the answer
@@ -667,13 +683,14 @@ def main():
                     comment_header = f"> [!NOTE]\n> Comment by {comment_author} on {comment_date}\n\n"
                     comment_body = comment_header + comment_body
 
-                    add_comment(token, owner, name, discussion_number, comment_body)
+                    add_comment(github_graphql, owner, name, discussion_number, comment_body, comment_id)
 
             # Mark accepted answer using API if available
             if accepted_answer_id and accepted_answer_id in answer_id_to_comment_id:
-                mark_discussion_comment_as_answer(token, answer_id_to_comment_id[accepted_answer_id])
+                mark_discussion_comment_as_answer(github_graphql, answer_id_to_comment_id[accepted_answer_id])
         except Exception as e:
-            logger.error(f"Error processing question #{i+1}: {e}")
+            question_id = question['question_id'] if question else "Unknown ID"
+            logger.error(f"Error processing question_id {question_id} question #{i+1}: {e}")
             continue
 
 def get_readable_date(the_date):
@@ -688,33 +705,8 @@ def get_readable_date(the_date):
         the_date = "Unknown Date"
     return the_date
 
-def initialize_github_auth() -> tuple: 
-    """Initialize GitHub authentication using environment variables for App Auth.
-    Returns:
-        tuple: (token, Github client)
-    """
-    installation_id = os.environ.get("GHD_INSTALLATION_ID")
-    app_id = os.environ.get("GHD_APP_ID")
-    # This should be the path to the private key file
-    private_key = os.environ.get("GHD_PRIVATE_KEY")
 
-    if not installation_id or not app_id or not private_key:
-        raise ValueError("GHD_INSTALLATION_ID, GHD_APP_ID, and GHD_PRIVATE_KEY environment variables must be set")
-    
-    if not installation_id.isdigit() or not app_id.isdigit():
-        raise ValueError("GHD_INSTALLATION_ID and GHD_APP_ID must be numeric")
-    
-    with open(private_key, "r") as key_file:
-        private_key = key_file.read()
-
-    auth = Auth.AppAuth(int(app_id), private_key).get_installation_auth(int(installation_id))
-
-    # Initialize PyGithub client
-    g = Github(auth=auth)
-    token = auth.token
-    return token, g
-
-def mark_discussion_comment_as_answer(token, comment_node_id):
+def mark_discussion_comment_as_answer(github_graphql, comment_node_id):
     """Mark a discussion comment as the accepted answer using the GraphQL mutation."""
     mutation = """
     mutation($id: ID!) {
@@ -726,7 +718,7 @@ def mark_discussion_comment_as_answer(token, comment_node_id):
     }
     """
     variables = {'id': comment_node_id}
-    data = github_graphql_request(token, mutation, variables)
+    data = github_graphql.github_graphql_request(mutation, variables)
     logger.info(f"Marked comment {comment_node_id} as accepted answer.")
     return True
 
