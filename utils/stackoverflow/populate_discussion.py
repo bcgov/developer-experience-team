@@ -14,32 +14,36 @@ import time
 from populate_discussion_helpers import RateLimiter, GitHubAuthManager, GraphQLHelper
 
 
-# Setup logging
-# Configure root logger to handle all modules
-root_logger = logging.getLogger()
-root_logger.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger_file_handler = logging.FileHandler('populate_discussion.log')
-logger_file_handler.setFormatter(formatter)
-logger_console_handler = logging.StreamHandler()
-logger_console_handler.setFormatter(formatter)
-root_logger.addHandler(logger_file_handler)
-root_logger.addHandler(logger_console_handler)
-
 # Get logger for this module
 logger = logging.getLogger(__name__)
 
-# Setup URL mapping logger
-
+# Get URL mapping logger (but don't configure it unless we're the main script)
 url_mapping_logger = logging.getLogger('url_mapping')
-url_mapping_logger.setLevel(logging.INFO)
-url_mapping_handler = logging.FileHandler(datetime.now().strftime('so2ghd_%d_%m_%Y_%H_%M_.log'))
-url_mapping_formatter = logging.Formatter('%(message)s')
-url_mapping_handler.setFormatter(url_mapping_formatter)
-url_mapping_logger.addHandler(url_mapping_handler)
-url_mapping_logger.propagate = False  # Prevent messages from going to root logger
 
 Category = namedtuple('Category', ['id', 'name'])
+
+# Setup logging - only when running as main script
+def setup_populate_discussion_logging():
+    """Setup logging for populate_discussion.py when run as main script."""
+    # Configure root logger to handle all modules
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logger_file_handler = logging.FileHandler('populate_discussion.log')
+    logger_file_handler.setFormatter(formatter)
+    logger_console_handler = logging.StreamHandler()
+    logger_console_handler.setFormatter(formatter)
+    root_logger.addHandler(logger_file_handler)
+    root_logger.addHandler(logger_console_handler)
+
+    # Setup URL mapping logger
+    url_mapping_logger = logging.getLogger('url_mapping')
+    url_mapping_logger.setLevel(logging.INFO)
+    url_mapping_handler = logging.FileHandler(datetime.now().strftime('so2ghd_%d_%m_%Y_%H_%M_.log'))
+    url_mapping_formatter = logging.Formatter('%(message)s')
+    url_mapping_handler.setFormatter(url_mapping_formatter)
+    url_mapping_logger.addHandler(url_mapping_handler)
+    url_mapping_logger.propagate = False  # Prevent messages from going to root logger
 
 def load_json(filename: str) -> List[Dict[str, Any]]:
     """Load and parse a JSON file"""
@@ -202,7 +206,7 @@ def create_discussion(github_graphql, owner, name, title: str, body: str, catego
         add_labels_to_discussion(github_graphql, discussion_node_id, label_node_ids)
     return discussion_number, discussion_url
 
-def add_comment(github_graphql, owner: str, name: str, discussion_number: int, body: str):
+def add_comment(github_graphql, owner: str, name: str, discussion_number: int, body: str, reply_to_id: Optional[str] = None):
     """Add a comment to an existing discussion using GraphQL via requests. Returns the comment node ID if successful, else None."""
     query = """
     query($owner: String!, $name: String!, $number: Int!) {
@@ -221,10 +225,11 @@ def add_comment(github_graphql, owner: str, name: str, discussion_number: int, b
     data = github_graphql.github_graphql_request(query, variables)
     discussion_id = data['repository']['discussion']['id']
     mutation = """
-    mutation($discussionId: ID!, $body: String!) {
+    mutation($discussionId: ID!, $body: String!, $replyToId: ID) {
       addDiscussionComment(input: {
         discussionId: $discussionId,
-        body: $body
+        body: $body,
+        replyToId: $replyToId
       }) {
         comment {
           id
@@ -235,7 +240,8 @@ def add_comment(github_graphql, owner: str, name: str, discussion_number: int, b
     """
     variables = {
         'discussionId': discussion_id,
-        'body': body
+        'body': body,
+        'replyToId': reply_to_id
     }
     data = github_graphql.github_graphql_request(mutation, variables)
     logger.info(f"Added comment to discussion #{discussion_number}")
@@ -438,6 +444,9 @@ def log_url_mapping(stackoverflow_urls: List[str], github_discussion_url: str):
             logger.warning("Empty Stack Overflow URL found, skipping logging for this entry.")
 
 def main():
+    # Setup logging for this script
+    setup_populate_discussion_logging()
+    
     parser = argparse.ArgumentParser(description='Populate GitHub Discussions from Q&A data')
     parser.add_argument('--repo', required=True, help='Repository in format owner/name')
     parser.add_argument('--category', required=True, help='Discussion category name')
@@ -674,7 +683,7 @@ def main():
                     comment_header = f"> [!NOTE]\n> Comment by {comment_author} on {comment_date}\n\n"
                     comment_body = comment_header + comment_body
 
-                    add_comment(github_graphql, owner, name, discussion_number, comment_body)
+                    add_comment(github_graphql, owner, name, discussion_number, comment_body, comment_id)
 
             # Mark accepted answer using API if available
             if accepted_answer_id and accepted_answer_id in answer_id_to_comment_id:

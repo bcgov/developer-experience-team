@@ -112,6 +112,19 @@ class MigrationValidator:
                           login
                         }
                         isAnswer
+                        replyTo {
+                          id
+                        }
+                        replies(first: 50) {
+                          nodes {
+                            id
+                            body
+                            createdAt
+                            author {
+                              login
+                            }
+                          }
+                        }
                       }
                     }
                   }
@@ -277,7 +290,12 @@ class MigrationValidator:
         return issues
 
     def validate_comments(self, so_question: Dict, gh_discussion: Dict) -> List[str]:
-        """Validate that comments were transferred correctly."""
+        """Validate that comments were transferred correctly.
+        
+        Comments are structured differently in GitHub Discussions:
+        - Stack Overflow question comments → GitHub top-level comments with 'Comment by' prefix
+        - Stack Overflow answer comments → GitHub replies to answer comments
+        """
         issues = []
         
         # Count SO comments (question + answer comments)
@@ -285,12 +303,23 @@ class MigrationValidator:
         so_answer_comments = sum(len(answer.get('comments', [])) for answer in so_question.get('answers', []))
         total_so_comments = so_question_comments + so_answer_comments
         
-        # Count GH comments (excluding answers)
-        gh_comments = [c for c in gh_discussion['comments']['nodes'] 
-                      if 'Comment by' in c['body']]
+        # Count GH comments and replies
+        # Question comments become top-level comments with 'Comment by' in body
+        gh_question_comments = [c for c in gh_discussion['comments']['nodes'] 
+                               if 'Comment by' in c['body'] and not c.get('replyTo')]
         
-        if total_so_comments != len(gh_comments):
-            issues.append(f"Comment count mismatch: SO={total_so_comments} vs GH={len(gh_comments)}")
+        # Answer comments become replies to answer comments (with 'Originally answered by')
+        gh_answer_replies = []
+        for comment in gh_discussion['comments']['nodes']:
+            if 'Originally answered by' in comment['body']:
+                # This is an answer comment, check its replies
+                replies = comment.get('replies', {}).get('nodes', [])
+                gh_answer_replies.extend(replies)
+        
+        total_gh_comments = len(gh_question_comments) + len(gh_answer_replies)
+        
+        if total_so_comments != total_gh_comments:
+            issues.append(f"Comment count mismatch: SO={total_so_comments} vs GH={total_gh_comments} (Question comments: SO={so_question_comments} vs GH={len(gh_question_comments)}, Answer comments: SO={so_answer_comments} vs GH={len(gh_answer_replies)})")
         
         return issues
 
@@ -388,6 +417,19 @@ class MigrationValidator:
                 report += f"### {issue['id']} - {issue['title']}\n"
                 for problem in issue['issues']:
                     report += f"- {problem}\n"
+
+        # Add section for unique IDs with issues
+        unique_ids = set()
+        for issue in results['answer_mismatches']:
+            unique_ids.add(issue['id'])
+        for issue in results['comment_mismatches']:
+            unique_ids.add(issue['id'])
+        
+        if unique_ids:
+            report += "\n## Question IDs with Answer or Comment Issues\n"
+            report += "The following question IDs have answer or comment mismatches. These are the question_ids listed in the above sections:\n\n"
+            for question_id in sorted(unique_ids):
+                report += f"- {question_id}\n"
 
         return report
 

@@ -479,7 +479,7 @@ class TestMigrationValidator(unittest.TestCase):
         self.assertNotIn("present.png", issues[0])
 
     def test_validate_comments_perfect_match(self):
-        """Test validation when comment counts match perfectly."""
+        """Test validation when comment counts match perfectly with reply structure."""
         so_question = {
             "comments": [
                 {"comment_id": 1, "body": "Great question!"},
@@ -505,11 +505,33 @@ class TestMigrationValidator(unittest.TestCase):
         gh_discussion = {
             "comments": {
                 "nodes": [
-                    {"body": "> [!NOTE]\n> Comment by user1 on 2024-01-15\n\nGreat question!"},
-                    {"body": "> [!NOTE]\n> Comment by user2 on 2024-01-15\n\nI have the same issue."},
-                    {"body": "> [!NOTE]\n> Comment by user3 on 2024-01-15\n\nThis worked for me!"},
-                    {"body": "> [!NOTE]\n> Comment by user4 on 2024-01-15\n\nThanks for the solution."},
-                    {"body": "> [!NOTE]\n> Comment by user5 on 2024-01-15\n\nAlternative approach."}
+                    # Question comments (top-level)
+                    {
+                        "body": "> [!NOTE]\n> Comment by user1 on 2024-01-15\n\nGreat question!",
+                        "replyTo": None
+                    },
+                    {
+                        "body": "> [!NOTE]\n> Comment by user2 on 2024-01-15\n\nI have the same issue.",
+                        "replyTo": None
+                    },
+                    # Answer comments (with replies)
+                    {
+                        "body": "> [!NOTE]\n> Originally answered by user3 on 2024-01-15\n\nFirst answer content",
+                        "replies": {
+                            "nodes": [
+                                {"body": "This worked for me!"},
+                                {"body": "Thanks for the solution."}
+                            ]
+                        }
+                    },
+                    {
+                        "body": "> [!NOTE]\n> Originally answered by user4 on 2024-01-15\n\nSecond answer content",
+                        "replies": {
+                            "nodes": [
+                                {"body": "Alternative approach."}
+                            ]
+                        }
+                    }
                 ]
             }
         }
@@ -518,7 +540,7 @@ class TestMigrationValidator(unittest.TestCase):
         self.assertEqual(len(issues), 0)
 
     def test_validate_comments_count_mismatch(self):
-        """Test validation when comment counts don't match."""
+        """Test validation when comment counts don't match with reply structure."""
         so_question = {
             "comments": [
                 {"comment_id": 1, "body": "Comment 1"},
@@ -537,9 +559,22 @@ class TestMigrationValidator(unittest.TestCase):
         gh_discussion = {
             "comments": {
                 "nodes": [
-                    {"body": "> [!NOTE]\n> Comment by user1\n\nComment 1"},
-                    {"body": "> [!NOTE]\n> Comment by user2\n\nComment 2"}
-                    # Missing the answer comment
+                    # Question comments (correct)
+                    {
+                        "body": "> [!NOTE]\n> Comment by user1\n\nComment 1",
+                        "replyTo": None
+                    },
+                    {
+                        "body": "> [!NOTE]\n> Comment by user2\n\nComment 2",
+                        "replyTo": None
+                    },
+                    # Answer with missing reply
+                    {
+                        "body": "> [!NOTE]\n> Originally answered by user3\n\nAnswer content",
+                        "replies": {
+                            "nodes": []  # Missing the answer comment
+                        }
+                    }
                 ]
             }
         }
@@ -570,7 +605,7 @@ class TestMigrationValidator(unittest.TestCase):
         self.assertEqual(len(issues), 0)
 
     def test_validate_comments_mixed_content(self):
-        """Test validation when GH has mixed content (answers and comments)."""
+        """Test validation when GH has mixed content (answers and comments) with reply structure."""
         so_question = {
             "comments": [
                 {"comment_id": 1, "body": "Question comment"}
@@ -589,9 +624,20 @@ class TestMigrationValidator(unittest.TestCase):
         gh_discussion = {
             "comments": {
                 "nodes": [
-                    {"body": "> [!NOTE]\n> Comment by user1\n\nQuestion comment"},
-                    {"body": "> [!NOTE]\n> Originally answered by user2\n\nThis is an answer, not a comment"},
-                    {"body": "> [!NOTE]\n> Comment by user3\n\nAnswer comment"}
+                    # Question comment (top-level)
+                    {
+                        "body": "> [!NOTE]\n> Comment by user1\n\nQuestion comment",
+                        "replyTo": None
+                    },
+                    # Answer with reply
+                    {
+                        "body": "> [!NOTE]\n> Originally answered by user2\n\nThis is an answer, not a comment",
+                        "replies": {
+                            "nodes": [
+                                {"body": "Answer comment"}
+                            ]
+                        }
+                    }
                 ]
             }
         }
@@ -600,7 +646,7 @@ class TestMigrationValidator(unittest.TestCase):
         self.assertEqual(len(issues), 0)
 
     def test_validate_comments_missing_answer_structure(self):
-        """Test validation when there are no answers."""
+        """Test validation when there are no answers with reply structure."""
         so_question = {
             "comments": [
                 {"comment_id": 1, "body": "Only question comment"}
@@ -611,13 +657,208 @@ class TestMigrationValidator(unittest.TestCase):
         gh_discussion = {
             "comments": {
                 "nodes": [
-                    {"body": "> [!NOTE]\n> Comment by user1\n\nOnly question comment"}
+                    {
+                        "body": "> [!NOTE]\n> Comment by user1\n\nOnly question comment",
+                        "replyTo": None
+                    }
                 ]
             }
         }
         
         issues = self.validator.validate_comments(so_question, gh_discussion)
         self.assertEqual(len(issues), 0)
+
+    def test_validate_comments_with_reply_structure(self):
+        """Test validation specifically for the reply-to structure."""
+        so_question = {
+            "comments": [],  # No question comments
+            "answers": [
+                {
+                    "answer_id": 1,
+                    "comments": [
+                        {"comment_id": 1, "body": "Reply 1 to answer"},
+                        {"comment_id": 2, "body": "Reply 2 to answer"}
+                    ]
+                }
+            ]
+        }
+        
+        gh_discussion = {
+            "comments": {
+                "nodes": [
+                    {
+                        "body": "> [!NOTE]\n> Originally answered by user1\n\nAnswer content here",
+                        "replies": {
+                            "nodes": [
+                                {"body": "Reply 1 to answer"},
+                                {"body": "Reply 2 to answer"}
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+        
+        issues = self.validator.validate_comments(so_question, gh_discussion)
+        self.assertEqual(len(issues), 0)
+
+    def test_validate_comments_missing_replies_structure(self):
+        """Test validation when GitHub discussion is missing replies structure."""
+        so_question = {
+            "comments": [],
+            "answers": [
+                {
+                    "answer_id": 1,
+                    "comments": [
+                        {"comment_id": 1, "body": "Answer comment"}
+                    ]
+                }
+            ]
+        }
+        
+        gh_discussion = {
+            "comments": {
+                "nodes": [
+                    {
+                        "body": "> [!NOTE]\n> Originally answered by user1\n\nAnswer content",
+                        # Missing "replies" key entirely
+                    }
+                ]
+            }
+        }
+        
+        issues = self.validator.validate_comments(so_question, gh_discussion)
+        self.assertEqual(len(issues), 1)
+        self.assertIn("Comment count mismatch: SO=1 vs GH=0", issues[0])
+
+    def test_validate_comments_question_vs_answer_breakdown(self):
+        """Test that the error message includes detailed breakdown of question vs answer comments."""
+        so_question = {
+            "comments": [
+                {"comment_id": 1, "body": "Question comment 1"},
+                {"comment_id": 2, "body": "Question comment 2"}
+            ],
+            "answers": [
+                {
+                    "answer_id": 1,
+                    "comments": [
+                        {"comment_id": 3, "body": "Answer comment 1"}
+                    ]
+                }
+            ]
+        }
+        
+        # GitHub is missing one question comment
+        gh_discussion = {
+            "comments": {
+                "nodes": [
+                    {
+                        "body": "> [!NOTE]\n> Comment by user1\n\nQuestion comment 1",
+                        "replyTo": None
+                    },
+                    # Missing second question comment
+                    {
+                        "body": "> [!NOTE]\n> Originally answered by user2\n\nAnswer content",
+                        "replies": {
+                            "nodes": [
+                                {"body": "Answer comment 1"}
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+        
+        issues = self.validator.validate_comments(so_question, gh_discussion)
+        self.assertEqual(len(issues), 1)
+        # Should include detailed breakdown
+        self.assertIn("Question comments: SO=2 vs GH=1", issues[0])
+        self.assertIn("Answer comments: SO=1 vs GH=1", issues[0])
+
+    def test_validate_comments_with_replyTo_field(self):
+        """Test validation when GitHub comments have replyTo field set."""
+        so_question = {
+            "comments": [
+                {"comment_id": 1, "body": "Question comment"}
+            ],
+            "answers": []
+        }
+        
+        gh_discussion = {
+            "comments": {
+                "nodes": [
+                    {
+                        "body": "> [!NOTE]\n> Comment by user1\n\nQuestion comment",
+                        "replyTo": None  # Top-level question comment
+                    },
+                    {
+                        "body": "This should not be counted as it has replyTo",
+                        "replyTo": {"id": "some_id"}  # This is a reply, not a top-level comment
+                    }
+                ]
+            }
+        }
+        
+        issues = self.validator.validate_comments(so_question, gh_discussion)
+        self.assertEqual(len(issues), 0)  # Should match: 1 SO question comment = 1 GH top-level comment
+
+    def test_validate_comments_complex_structure(self):
+        """Test validation with a complex mix of question comments, answers, and replies."""
+        so_question = {
+            "comments": [
+                {"comment_id": 1, "body": "Question comment 1"},
+                {"comment_id": 2, "body": "Question comment 2"}
+            ],
+            "answers": [
+                {
+                    "answer_id": 1,
+                    "comments": [
+                        {"comment_id": 3, "body": "Answer 1 comment 1"},
+                        {"comment_id": 4, "body": "Answer 1 comment 2"}
+                    ]
+                },
+                {
+                    "answer_id": 2,
+                    "comments": []  # Answer with no comments
+                }
+            ]
+        }
+        
+        gh_discussion = {
+            "comments": {
+                "nodes": [
+                    # Question comments
+                    {
+                        "body": "> [!NOTE]\n> Comment by user1\n\nQuestion comment 1",
+                        "replyTo": None
+                    },
+                    {
+                        "body": "> [!NOTE]\n> Comment by user2\n\nQuestion comment 2",
+                        "replyTo": None
+                    },
+                    # First answer with replies
+                    {
+                        "body": "> [!NOTE]\n> Originally answered by user3\n\nFirst answer content",
+                        "replies": {
+                            "nodes": [
+                                {"body": "Answer 1 comment 1"},
+                                {"body": "Answer 1 comment 2"}
+                            ]
+                        }
+                    },
+                    # Second answer with no replies
+                    {
+                        "body": "> [!NOTE]\n> Originally answered by user4\n\nSecond answer content",
+                        "replies": {
+                            "nodes": []
+                        }
+                    }
+                ]
+            }
+        }
+        
+        issues = self.validator.validate_comments(so_question, gh_discussion)
+        self.assertEqual(len(issues), 0)  # 2 question + 2 answer comments = 4 total
 
 
 if __name__ == '__main__':

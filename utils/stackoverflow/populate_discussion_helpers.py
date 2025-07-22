@@ -129,7 +129,7 @@ class GraphQLHelper:
         }
         retry_count = 0
         max_retries = 5  
-        base_sleep_time = 2
+        base_sleep_time = 3
         
         while True:
             response = requests.post(
@@ -150,8 +150,8 @@ class GraphQLHelper:
                 if retry_count > max_retries:
                     logger.error("Max retries exceeded, aborting request.")
                     raise Exception(f"GraphQL errors: {result['errors']}")
-                
-                # Progressive backoff: 2, 5, 10 seconds
+
+                # Progressive backoff: 3, 7.5, 15, 37.5, 117 seconds
                 sleep_time = base_sleep_time * (2.5 ** (retry_count - 1))
                 logger.warning(f"Rate limit hit, retrying {retry_count}/{max_retries} after {sleep_time:.1f} seconds...")
                 time.sleep(sleep_time)
