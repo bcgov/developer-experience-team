@@ -689,7 +689,7 @@ def main():
             if accepted_answer_id and accepted_answer_id in answer_id_to_comment_id:
                 mark_discussion_comment_as_answer(github_graphql, answer_id_to_comment_id[accepted_answer_id])
         except Exception as e:
-            question_id = question['question_id'] if question else "Unknown id"
+            question_id = question['question_id'] if question else "Unknown ID"
             logger.error(f"Error processing question_id {question_id} question #{i+1}: {e}")
             continue
 
