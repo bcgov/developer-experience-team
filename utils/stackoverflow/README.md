@@ -115,6 +115,9 @@ python populate_discussion.py --repo OWNER/REPO --category CATEGORY_NAME [option
 - `--clean`: Delete all discussions, comments, and labels before import
 - `--clean-only`: Delete all discussions, comments, and labels, then exit
 - `--clean-category`: Used with --category and --clean or --clean-only to delete discussions in the specified category only
+- `--api-delay`: Minimum seconds between API calls (default: 1.0)
+- `--ignore-tags`: List of tags to ignore (space-separated). Questions tagged with these tag(s) will not be processed.
+- `--tag-min-threshold`: Minimum number of questions a tag must be associated with to be considered for label creation (default: 1)
 
 #### Example
 ```
@@ -235,3 +238,76 @@ Use the extracted JSON file as input to retry failed questions:
 ```bash
 python populate_discussion.py --repo owner/repo --category "Q&A" --questions-file retry_questions.json
 ```
+
+## Label Management (delete_all_labels.py)
+A utility script for deleting all labels in a GitHub repository. This tool is particularly useful for cleaning up repositories after Stack Overflow migrations or when you need to reset repository labels completely.
+
+### Requirements
+* Python 3.x
+* Dependencies listed in requirements.txt
+* GitHub App with appropriate permissions (Contents, Metadata)
+
+### Setup
+1. Install the required dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+2. Set up GitHub App authentication by setting these environment variables:
+   ```
+   export GHD_INSTALLATION_ID=your_installation_id
+   export GHD_APP_ID=your_github_app_id
+   export GHD_PRIVATE_KEY=/path/to/your/private-key.pem
+   ```
+
+### Usage
+```
+python delete_all_labels.py --repo OWNER/REPO [options]
+```
+
+#### Parameters
+- `--repo` (required): GitHub repository in format owner/name
+- `--api-delay`: Minimum seconds between API calls (default: 1.0)
+- `--dry-run`: Show what would be deleted without actually deleting
+- `--force`: Skip confirmation prompt 
+
+#### Examples
+
+**Preview what would be deleted (recommended first step):**
+```bash
+python delete_all_labels.py --repo bcgov/developer-experience-team --dry-run
+```
+
+**Delete all labels with confirmation:**
+```bash
+python delete_all_labels.py --repo bcgov/developer-experience-team
+```
+
+**Delete all labels without confirmation (for living dangerously):**
+```bash
+python delete_all_labels.py --repo bcgov/developer-experience-team --force
+```
+
+**Delete with custom API delay:**
+```bash
+python delete_all_labels.py --repo bcgov/developer-experience-team --api-delay 2.0
+```
+
+
+### Output
+The script provides detailed feedback including:
+- Total number of labels found
+- Preview of labels to be deleted (first 10 shown)
+- Progress updates during deletion
+- Summary of successful and failed deletions
+- All operations logged to `delete_labels.log`
+
+### Safety Warnings
+⚠️ **DESTRUCTIVE OPERATION**: This script permanently deletes all labels from the specified repository. This action cannot be undone.
+
+**Best Practices:**
+1. Always run with `--dry-run` first to preview changes
+2. Ensure you have backups or can recreate labels if needed
+3. Use `--force` only in automated scripts where confirmation isn't possible
+4. Monitor the logs for any failures during bulk operations
+
+

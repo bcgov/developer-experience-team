@@ -284,7 +284,7 @@ def find_discussion_by_title(github_graphql, owner: str, name: str, title: str, 
     return None
 
 def clean_repo_discussions(github_graphql, owner: str, name: str, category: Optional[Category] = None):
-    """Delete all discussions, their comments, and remove all labels from the repo. Optionally filter by category."""
+    """Delete all discussions, their comments, and unlabel them from the repo. Optionally filter by category."""
 
     if not category:
         logger.warning("Cleaning all discussions, comments, and labels from the repository!")
@@ -463,8 +463,20 @@ def main():
     parser.add_argument('--ignore-tags', 
                          type=str, 
                          nargs='+',
-                         help='List of tags to ignore (space-separated)')
+                         help='List of tags to ignore (space-separated). Questions tagged with these tag(s) will not be processed.')
+    parser.add_argument('--tag-min-threshold',
+                         type=int,
+                         default=1,
+                         help='Minimum number of questions a tag must be associated with to be considered for label creation (default: 1)')
     args = parser.parse_args()
+
+    if args.tag_min_threshold < 0:
+        logger.warning("Negative tag minimum threshold specified, defaulting to 1")
+        args.tag_min_threshold = 1
+
+    if args.api_delay < 0:
+        logger.warning("Negative API delay specified, defaulting to 1.0 seconds")
+        args.api_delay = 1.0
 
     # Set the global API delay based on user preference
     rate_limiter = RateLimiter(min_interval=args.api_delay)
@@ -506,6 +518,10 @@ def main():
     # Load data
     questions = load_json(args.questions_file)
     tags_data = load_json(args.tags_file)
+    
+    tags_under_threshold = get_tags_under_threshold(args.tag_min_threshold, tags_data)
+    
+    tags_data = get_tags_at_or_above_threshold(args.tag_min_threshold, tags_data)
 
     # Get or create tags as labels
     existing_labels = get_labels(repo)
@@ -541,6 +557,8 @@ def main():
             if tags_to_ignore_helper.should_ignore(tags):
                 logger.info(f"Skipping question {question.get('question_id', 'Unknown ID')} - {title} due to its tags containing ignored tag(s): {', '.join(tags)}")
                 continue
+            
+            tags = remove_tags_under_threshold(tags_under_threshold, tags)
 
             body = question.get('body', '')
 
@@ -703,6 +721,42 @@ def main():
             question_id = question['question_id'] if question else "Unknown ID"
             logger.error(f"Error processing question_id {question_id} question #{i+1}: {e}")
             continue
+
+def remove_tags_under_threshold(tags_under_threshold: List[str], tags: List[str]) -> List[str]:
+    """Remove tags that are under the threshold from the given tags list.
+    
+    Args:
+        tags_under_threshold: List of tag names that are under threshold
+        tags: List of tag names to filter
+        
+    Returns:
+        List of tag names with under-threshold tags removed
+    """
+    return [tag for tag in tags if tag not in tags_under_threshold]
+
+def get_tags_under_threshold(min_threshold: int, tags_data: List[Dict[str, Any]]) -> List[str]:
+    """Get tag names for tags with count below the minimum threshold.
+    
+    Args:
+        min_threshold: Minimum count threshold
+        tags_data: List of tag dictionaries from tags.json
+        
+    Returns:
+        List of tag names (strings) for tags with count < min_threshold
+    """
+    return [tag['name'] for tag in tags_data if tag.get('count', 0) < min_threshold]
+
+def get_tags_at_or_above_threshold(min_threshold: int, tags_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Get tag objects for tags with count at or above the minimum threshold.
+    
+    Args:
+        min_threshold: Minimum count threshold
+        tags_data: List of tag dictionaries from tags.json
+        
+    Returns:
+        List of tag dictionaries for tags with count >= min_threshold
+    """
+    return [tag for tag in tags_data if tag.get('count', 0) >= min_threshold]
 
 def get_readable_date(the_date):
     """Convert creation_date to a readable string format."""

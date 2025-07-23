@@ -1,6 +1,16 @@
 import unittest
+import json
+import os
 from datetime import datetime, timezone
-from populate_discussion import get_url_redir_str, get_readable_date, decode_html_entities, TagsToIgnore
+from populate_discussion import (
+    get_url_redir_str, 
+    get_readable_date, 
+    decode_html_entities, 
+    TagsToIgnore,
+    remove_tags_under_threshold,
+    get_tags_under_threshold, 
+    get_tags_at_or_above_threshold
+)
 
 
 class TestGetUrlRedirStr(unittest.TestCase):
@@ -367,6 +377,454 @@ class TestTagsToIgnore(unittest.TestCase):
         
         result = tags_helper.should_ignore(["тест"])
         self.assertTrue(result)
+
+
+class TestRemoveTagsUnderThreshold(unittest.TestCase):
+    """Unit tests for the remove_tags_under_threshold function."""
+
+    def test_remove_empty_lists(self):
+        """Test with empty lists."""
+        result = remove_tags_under_threshold([], [])
+        self.assertEqual(result, [])
+
+    def test_remove_empty_tags_under_threshold(self):
+        """Test with empty tags_under_threshold list."""
+        tags = ["tag1", "tag2", "tag3"]
+        result = remove_tags_under_threshold([], tags)
+        self.assertEqual(result, ["tag1", "tag2", "tag3"])
+
+    def test_remove_empty_tags(self):
+        """Test with empty tags list."""
+        tags_under_threshold = ["tag1", "tag2"]
+        result = remove_tags_under_threshold(tags_under_threshold, [])
+        self.assertEqual(result, [])
+
+    def test_remove_no_matches(self):
+        """Test when no tags match the threshold list."""
+        tags_under_threshold = ["low1", "low2"]
+        tags = ["high1", "high2", "high3"]
+        result = remove_tags_under_threshold(tags_under_threshold, tags)
+        self.assertEqual(result, ["high1", "high2", "high3"])
+
+    def test_remove_some_matches(self):
+        """Test when some tags match the threshold list using realistic tag names."""
+        # Based on actual Stack Overflow tag usage patterns
+        tags_under_threshold = ["debugging", "troubleshooting", "help"]
+        tags = ["openshift", "debugging", "kubernetes", "troubleshooting", "docker", "help", "security"]
+        result = remove_tags_under_threshold(tags_under_threshold, tags)
+        self.assertEqual(result, ["openshift", "kubernetes", "docker", "security"])
+
+    def test_remove_all_matches(self):
+        """Test when all tags match the threshold list."""
+        tags_under_threshold = ["tag1", "tag2", "tag3"]
+        tags = ["tag1", "tag2", "tag3"]
+        result = remove_tags_under_threshold(tags_under_threshold, tags)
+        self.assertEqual(result, [])
+
+    def test_remove_duplicate_tags(self):
+        """Test with duplicate tags in input list."""
+        tags_under_threshold = ["low1"]
+        tags = ["high1", "low1", "high1", "low1", "high2"]
+        result = remove_tags_under_threshold(tags_under_threshold, tags)
+        self.assertEqual(result, ["high1", "high1", "high2"])
+
+    def test_remove_case_sensitive(self):
+        """Test that removal is case sensitive."""
+        tags_under_threshold = ["Low1", "LOW2"]
+        tags = ["low1", "Low1", "low2", "LOW2", "high1"]
+        result = remove_tags_under_threshold(tags_under_threshold, tags)
+        self.assertEqual(result, ["low1", "low2", "high1"])
+
+
+class TestGetTagsUnderThreshold(unittest.TestCase):
+    """Unit tests for the get_tags_under_threshold function."""
+
+    def test_get_empty_tags_data(self):
+        """Test with empty tags_data."""
+        result = get_tags_under_threshold(5, [])
+        self.assertEqual(result, [])
+
+    def test_get_zero_threshold(self):
+        """Test with zero threshold (should return empty list as all counts >= 0)."""
+        tags_data = [
+            {"name": "tag1", "count": 0},
+            {"name": "tag2", "count": 1}, 
+            {"name": "tag3", "count": 10}
+        ]
+        result = get_tags_under_threshold(0, tags_data)
+        self.assertEqual(result, [])
+
+    def test_get_threshold_one(self):
+        """Test with threshold of 1."""
+        tags_data = [
+            {"name": "tag1", "count": 0},
+            {"name": "tag2", "count": 1},
+            {"name": "tag3", "count": 2}
+        ]
+        result = get_tags_under_threshold(1, tags_data)
+        self.assertEqual(result, ["tag1"])
+
+    def test_get_threshold_five(self):
+        """Test with threshold of 5 using realistic tag data."""
+        # Based on actual tags.json structure
+        tags_data = [
+            {
+                "name": "openshift",
+                "count": 145,
+                "description": "Topics related to the Province's implementation of OpenShift.",
+                "id": 12,
+                "has_synonyms": False
+            },
+            {
+                "name": "database", 
+                "count": 8,
+                "description": "Questions about database design, queries, and administration.",
+                "id": 15,
+                "has_synonyms": False
+            },
+            {
+                "name": "authentication",
+                "count": 3,
+                "description": "Authentication and authorization questions.",
+                "id": 23,
+                "has_synonyms": False
+            },
+            {
+                "name": "api",
+                "count": 2,
+                "description": "Questions about API development and integration.",
+                "id": 45,
+                "has_synonyms": False
+            }
+        ]
+        result = get_tags_under_threshold(5, tags_data)
+        expected = ["authentication", "api"]  # Only tags with count < 5
+        self.assertEqual(sorted(result), sorted(expected))
+
+    def test_get_missing_count_field(self):
+        """Test with tags missing count field (should default to 0)."""
+        tags_data = [
+            {"name": "tag1", "count": 5},
+            {"name": "tag2"},  # Missing count field
+            {"name": "tag3", "count": 10}
+        ]
+        result = get_tags_under_threshold(5, tags_data)
+        self.assertEqual(result, ["tag2"])
+
+    def test_get_mixed_count_types(self):
+        """Test with different count value types."""
+        tags_data = [
+            {"name": "tag1", "count": 1},
+            {"name": "tag2", "count": 5.0},  # Float count
+            {"name": "tag3", "count": 10}    # Int count  
+        ]
+        result = get_tags_under_threshold(5, tags_data)
+        # tag1 (1 < 5)
+        self.assertEqual(result, ["tag1"])
+
+    def test_get_high_threshold(self):
+        """Test with high threshold where all realistic tags are under."""
+        # Using realistic BC Gov technology tags
+        tags_data = [
+            {
+                "name": "openshift", 
+                "count": 145,
+                "description": "OpenShift container platform questions.",
+                "id": 12
+            },
+            {
+                "name": "keycloak",
+                "count": 42,
+                "description": "Keycloak authentication questions.",
+                "id": 156
+            },
+            {
+                "name": "postgresql",
+                "count": 38,
+                "description": "PostgreSQL database questions.",
+                "id": 203
+            }
+        ]
+        result = get_tags_under_threshold(200, tags_data)
+        expected = ["openshift", "keycloak", "postgresql"]
+        self.assertEqual(sorted(result), sorted(expected))
+
+    def test_get_preserve_tag_structure(self):
+        """Test that function only returns tag names, not full structures."""
+        # Realistic tags.json structure
+        tags_data = [
+            {
+                "name": "keycloak",
+                "count": 12,
+                "description": "Questions about Keycloak authentication service.",
+                "id": 34,
+                "has_synonyms": False,
+                "last_activity_date": 1749501492
+            },
+            {
+                "name": "nodejs", 
+                "count": 3,
+                "description": "Node.js development questions.",
+                "id": 67,
+                "has_synonyms": True,
+                "last_activity_date": 1749401392
+            }
+        ]
+        result = get_tags_under_threshold(5, tags_data)
+        self.assertEqual(result, ["nodejs"])
+        # Verify it's just strings, not dicts
+        self.assertIsInstance(result[0], str)
+
+
+class TestGetTagsAtOrAboveThreshold(unittest.TestCase):
+    """Unit tests for the get_tags_at_or_above_threshold function."""
+
+    def test_get_empty_tags_data(self):
+        """Test with empty tags_data."""
+        result = get_tags_at_or_above_threshold(5, [])
+        self.assertEqual(result, [])
+
+    def test_get_zero_threshold(self):
+        """Test with zero threshold (should return all tags)."""
+        tags_data = [
+            {"name": "tag1", "count": 0},
+            {"name": "tag2", "count": 1},
+            {"name": "tag3", "count": 10}
+        ]
+        result = get_tags_at_or_above_threshold(0, tags_data)
+        self.assertEqual(len(result), 3)
+        self.assertEqual(result, tags_data)
+
+    def test_get_threshold_one(self):
+        """Test with threshold of 1."""
+        tags_data = [
+            {"name": "tag1", "count": 0},
+            {"name": "tag2", "count": 1},
+            {"name": "tag3", "count": 2}
+        ]
+        result = get_tags_at_or_above_threshold(1, tags_data)
+        expected = [
+            {"name": "tag2", "count": 1},
+            {"name": "tag3", "count": 2}
+        ]
+        self.assertEqual(result, expected)
+
+    def test_get_threshold_five(self):
+        """Test with threshold of 5 using realistic tag data."""
+        # Based on actual tags.json structure  
+        tags_data = [
+            {
+                "name": "openshift",
+                "count": 145,
+                "description": "Topics related to the Province's implementation of OpenShift.",
+                "id": 12,
+                "has_synonyms": False,
+                "last_activity_date": 1749501492
+            },
+            {
+                "name": "database",
+                "count": 8, 
+                "description": "Questions about database design, queries, and administration.",
+                "id": 15,
+                "has_synonyms": False,
+                "last_activity_date": 1749401292
+            },
+            {
+                "name": "authentication",
+                "count": 3,
+                "description": "Authentication and authorization questions.",
+                "id": 23,
+                "has_synonyms": False,
+                "last_activity_date": 1749301192
+            },
+            {
+                "name": "api",
+                "count": 2,
+                "description": "Questions about API development and integration.", 
+                "id": 45,
+                "has_synonyms": False,
+                "last_activity_date": 1749201092
+            }
+        ]
+        result = get_tags_at_or_above_threshold(5, tags_data)
+        expected = [
+            {
+                "name": "openshift",
+                "count": 145,
+                "description": "Topics related to the Province's implementation of OpenShift.",
+                "id": 12,
+                "has_synonyms": False,
+                "last_activity_date": 1749501492
+            },
+            {
+                "name": "database",
+                "count": 8,
+                "description": "Questions about database design, queries, and administration.",
+                "id": 15,
+                "has_synonyms": False,
+                "last_activity_date": 1749401292
+            }
+        ]
+        self.assertEqual(result, expected)
+
+    def test_get_missing_count_field(self):
+        """Test with tags missing count field (should default to 0)."""
+        tags_data = [
+            {"name": "tag1", "count": 5},
+            {"name": "tag2"},  # Missing count field
+            {"name": "tag3", "count": 10}
+        ]
+        result = get_tags_at_or_above_threshold(5, tags_data)
+        expected = [
+            {"name": "tag1", "count": 5},
+            {"name": "tag3", "count": 10}
+        ]
+        self.assertEqual(result, expected)
+
+    def test_get_mixed_count_types(self):
+        """Test with different count value types."""
+        tags_data = [
+            {"name": "tag1", "count": 1},
+            {"name": "tag2", "count": 5.0},  # Float count
+            {"name": "tag3", "count": 10}    # Int count
+        ]
+        result = get_tags_at_or_above_threshold(5, tags_data)
+        expected = [
+            {"name": "tag2", "count": 5.0},
+            {"name": "tag3", "count": 10}
+        ]  
+        self.assertEqual(result, expected)
+
+    def test_get_high_threshold(self):
+        """Test with high threshold where no tags qualify."""
+        tags_data = [
+            {"name": "tag1", "count": 1},
+            {"name": "tag2", "count": 50},
+            {"name": "tag3", "count": 100}
+        ]
+        result = get_tags_at_or_above_threshold(200, tags_data)
+        self.assertEqual(result, [])
+
+    def test_get_preserve_full_structure(self):
+        """Test that function returns full tag structures using realistic data."""
+        # Realistic tags.json structure
+        tags_data = [
+            {
+                "name": "docker",
+                "count": 25,
+                "description": "Container technology and Docker-related questions.",
+                "id": 89,
+                "has_synonyms": True,
+                "last_activity_date": 1749501492,
+                "is_moderator_only": False
+            },
+            {
+                "name": "testing",
+                "count": 3,
+                "description": "Software testing and quality assurance.",
+                "id": 156,
+                "has_synonyms": False,
+                "last_activity_date": 1749301192,
+                "is_moderator_only": False
+            }
+        ]
+        result = get_tags_at_or_above_threshold(5, tags_data)
+        expected = [{
+            "name": "docker",
+            "count": 25,
+            "description": "Container technology and Docker-related questions.",
+            "id": 89,
+            "has_synonyms": True,
+            "last_activity_date": 1749501492,
+            "is_moderator_only": False
+        }]
+        self.assertEqual(result, expected)
+        
+        # Verify it returns the complete dictionary structure
+        self.assertEqual(result[0]["description"], "Container technology and Docker-related questions.")
+        self.assertEqual(result[0]["id"], 89)
+        self.assertTrue(result[0]["has_synonyms"])
+
+    def test_get_exact_threshold_matches(self):
+        """Test that tags with count exactly equal to threshold are included using realistic data."""
+        # Realistic BC Gov Stack Overflow tags with various counts
+        tags_data = [
+            {
+                "name": "documentation",
+                "count": 4,
+                "description": "Questions about documentation and guides.",
+                "id": 301
+            },
+            {
+                "name": "devops", 
+                "count": 5,
+                "description": "DevOps practices and tools.",
+                "id": 302
+            },
+            {
+                "name": "cicd",
+                "count": 5,
+                "description": "Continuous Integration and Deployment.", 
+                "id": 303
+            },
+            {
+                "name": "monitoring",
+                "count": 7,
+                "description": "Application and infrastructure monitoring.",
+                "id": 304
+            }
+        ]
+        result = get_tags_at_or_above_threshold(5, tags_data)
+        expected = [
+            {
+                "name": "devops",
+                "count": 5,
+                "description": "DevOps practices and tools.",
+                "id": 302
+            },
+            {
+                "name": "cicd",
+                "count": 5,
+                "description": "Continuous Integration and Deployment.",
+                "id": 303
+            },
+            {
+                "name": "monitoring",
+                "count": 7,
+                "description": "Application and infrastructure monitoring.",
+                "id": 304
+            }
+        ]
+        self.assertEqual(result, expected)
+
+    def test_get_preserve_order(self):
+        """Test that original order is preserved in results using realistic data."""
+        # Realistic tags in the order they might appear in tags.json
+        tags_data = [
+            {
+                "name": "keycloak",
+                "count": 42,
+                "description": "Questions about Keycloak authentication service.",
+                "id": 156
+            },
+            {
+                "name": "api-gateway", 
+                "count": 18,
+                "description": "API Gateway configuration and usage.",
+                "id": 234
+            },
+            {
+                "name": "microservices",
+                "count": 31,
+                "description": "Microservices architecture questions.", 
+                "id": 189
+            }
+        ]
+        result = get_tags_at_or_above_threshold(5, tags_data)
+        # Should maintain original order: keycloak, api-gateway, microservices
+        expected_names = ["keycloak", "api-gateway", "microservices"]
+        actual_names = [tag["name"] for tag in result]
+        self.assertEqual(actual_names, expected_names)
 
 
 if __name__ == '__main__':
