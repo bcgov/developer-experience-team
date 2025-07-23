@@ -443,6 +443,72 @@ def log_url_mapping(stackoverflow_urls: List[str], github_discussion_url: str):
         else:
             logger.warning("Empty Stack Overflow URL found, skipping logging for this entry.")
 
+
+def remove_tags_under_threshold(tags_under_threshold: List[str], tags: List[str]) -> List[str]:
+    """Remove tags that are under the threshold from the given tags list.
+    
+    Args:
+        tags_under_threshold: List of tag names that are under threshold
+        tags: List of tag names to filter
+        
+    Returns:
+        List of tag names with under-threshold tags removed
+    """
+    return [tag for tag in tags if tag not in tags_under_threshold]
+
+def get_tags_under_threshold(min_threshold: int, tags_data: List[Dict[str, Any]]) -> List[str]:
+    """Get tag names for tags with count below the minimum threshold.
+    
+    Args:
+        min_threshold: Minimum count threshold
+        tags_data: List of tag dictionaries from tags.json
+        
+    Returns:
+        List of tag names (strings) for tags with count < min_threshold
+    """
+    return [tag['name'] for tag in tags_data if tag.get('count', 0) < min_threshold]
+
+def get_tags_at_or_above_threshold(min_threshold: int, tags_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Get tag objects for tags with count at or above the minimum threshold.
+    
+    Args:
+        min_threshold: Minimum count threshold
+        tags_data: List of tag dictionaries from tags.json
+        
+    Returns:
+        List of tag dictionaries for tags with count >= min_threshold
+    """
+    return [tag for tag in tags_data if tag.get('count', 0) >= min_threshold]
+
+def get_readable_date(the_date):
+    """Convert creation_date to a readable string format."""
+    if the_date:
+        try:
+            if isinstance(the_date, (int, float)):
+                the_date = datetime.fromtimestamp(the_date, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S %Z')
+        except Exception:
+            pass
+    else:
+        the_date = "Unknown Date"
+    return the_date
+
+
+def mark_discussion_comment_as_answer(github_graphql, comment_node_id):
+    """Mark a discussion comment as the accepted answer using the GraphQL mutation."""
+    mutation = """
+    mutation($id: ID!) {
+      markDiscussionCommentAsAnswer(input: {id: $id}) {
+        discussion {
+          id
+        }
+      }
+    }
+    """
+    variables = {'id': comment_node_id}
+    data = github_graphql.github_graphql_request(mutation, variables)
+    logger.info(f"Marked comment {comment_node_id} as accepted answer.")
+    return True
+
 def main():
     # Setup logging for this script
     setup_populate_discussion_logging()
@@ -521,11 +587,11 @@ def main():
     
     tags_under_threshold = get_tags_under_threshold(args.tag_min_threshold, tags_data)
     
-    tags_data = get_tags_at_or_above_threshold(args.tag_min_threshold, tags_data)
+    tags_meeting_threshold = get_tags_at_or_above_threshold(args.tag_min_threshold, tags_data)
 
     # Get or create tags as labels
     existing_labels = get_labels(repo)
-    tag_to_description = {tag['name']: tag.get('description', '') for tag in tags_data}
+    tag_to_description = {tag['name']: tag.get('description', '') for tag in tags_meeting_threshold}
 
     for tag_name, description in tag_to_description.items():
         if tag_name not in existing_labels and not tags_to_ignore_helper.should_ignore([tag_name]):
@@ -722,70 +788,6 @@ def main():
             logger.error(f"Error processing question_id {question_id} question #{i+1}: {e}")
             continue
 
-def remove_tags_under_threshold(tags_under_threshold: List[str], tags: List[str]) -> List[str]:
-    """Remove tags that are under the threshold from the given tags list.
-    
-    Args:
-        tags_under_threshold: List of tag names that are under threshold
-        tags: List of tag names to filter
-        
-    Returns:
-        List of tag names with under-threshold tags removed
-    """
-    return [tag for tag in tags if tag not in tags_under_threshold]
-
-def get_tags_under_threshold(min_threshold: int, tags_data: List[Dict[str, Any]]) -> List[str]:
-    """Get tag names for tags with count below the minimum threshold.
-    
-    Args:
-        min_threshold: Minimum count threshold
-        tags_data: List of tag dictionaries from tags.json
-        
-    Returns:
-        List of tag names (strings) for tags with count < min_threshold
-    """
-    return [tag['name'] for tag in tags_data if tag.get('count', 0) < min_threshold]
-
-def get_tags_at_or_above_threshold(min_threshold: int, tags_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Get tag objects for tags with count at or above the minimum threshold.
-    
-    Args:
-        min_threshold: Minimum count threshold
-        tags_data: List of tag dictionaries from tags.json
-        
-    Returns:
-        List of tag dictionaries for tags with count >= min_threshold
-    """
-    return [tag for tag in tags_data if tag.get('count', 0) >= min_threshold]
-
-def get_readable_date(the_date):
-    """Convert creation_date to a readable string format."""
-    if the_date:
-        try:
-            if isinstance(the_date, (int, float)):
-                the_date = datetime.fromtimestamp(the_date, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S %Z')
-        except Exception:
-            pass
-    else:
-        the_date = "Unknown Date"
-    return the_date
-
-
-def mark_discussion_comment_as_answer(github_graphql, comment_node_id):
-    """Mark a discussion comment as the accepted answer using the GraphQL mutation."""
-    mutation = """
-    mutation($id: ID!) {
-      markDiscussionCommentAsAnswer(input: {id: $id}) {
-        discussion {
-          id
-        }
-      }
-    }
-    """
-    variables = {'id': comment_node_id}
-    data = github_graphql.github_graphql_request(mutation, variables)
-    logger.info(f"Marked comment {comment_node_id} as accepted answer.")
-    return True
 
 
 class TagsToIgnore:
