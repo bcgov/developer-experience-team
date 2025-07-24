@@ -44,25 +44,25 @@ class MergeFiles:
 
 
 def main():
-  parser = argparse.ArgumentParser(description='Merge so2ghd log files into a new single file. The first file will be considered the base file. The second file will either add or overwrite entries from the first file.')
-  parser.add_argument('--base-file', required=True, help='Path to the base log file')
-  parser.add_argument('--patch-file', required=True, help='Path to the patch log file to merge with the base file')
-  parser.add_argument('--new-file', required=True, help='Path to the new log file to merge')
-  args = parser.parse_args()
+    parser = argparse.ArgumentParser(description='Merge so2ghd log files into a new single file. The first file will be considered the base file. The second file will either add or overwrite entries from the first file.')
+    parser.add_argument('--base-file', required=True, help='Path to the base log file')
+    parser.add_argument('--patch-file', required=True, help='Path to the patch log file to merge with the base file')
+    parser.add_argument('--new-file', required=True, help='Path to the new log file to merge')
+    args = parser.parse_args()
 
-  
-  if not os.path.isfile(args.base_file):
-    logger.error(f"Base file '{args.base_file}' does not exist.")
-    return  
-  
-  if not os.path.isfile(args.patch_file):
-    logger.error(f"Patch file '{args.patch_file}' does not exist.")
-    return
+    
+    if not os.path.isfile(args.base_file):
+        logger.error(f"Base file '{args.base_file}' does not exist.")
+        return  
+    
+    if not os.path.isfile(args.patch_file):
+        logger.error(f"Patch file '{args.patch_file}' does not exist.")
+        return
 
-  logger.info(f"Starting merge of {args.base_file} and {args.patch_file} into {args.new_file}")
-  merge_files = MergeFiles(args.base_file, args.patch_file, args.new_file)
-  merge_files.merge()
-  logger.info(f"Merge completed. Output written to {args.new_file}")
+    logger.info(f"Starting merge of {args.base_file} and {args.patch_file} into {args.new_file}")
+    merge_files = MergeFiles(args.base_file, args.patch_file, args.new_file)
+    merge_files.merge()
+    logger.info(f"Merge completed. Output written to {args.new_file}")
 
 if __name__ == '__main__':
     main()
