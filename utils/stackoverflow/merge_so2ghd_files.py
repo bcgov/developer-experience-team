@@ -1,6 +1,6 @@
 import argparse
 import logging
-from typing import Dict, Any
+from typing import Dict
 import os
 import sys
 
@@ -14,7 +14,7 @@ class MergeFiles:
         self.base_file = base_file
         self.patch_file = patch_file
         self.new_file = new_file
-        self.lines_mapping = {}
+        self.lines_mapping: Dict[str, str] = {}
     
     def merge(self):
         """Merge two so2ghd log files into a new file."""
