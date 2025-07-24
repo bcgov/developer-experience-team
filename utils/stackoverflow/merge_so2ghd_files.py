@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 class MergeFiles:
-  """Class to handle merging of two so2ghd log files."""
+    """Class to handle merging of two so2ghd log files."""
     
   def __init__(self, base_file: str, patch_file: str, new_file: str):
     self.base_file = base_file
