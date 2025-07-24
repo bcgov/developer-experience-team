@@ -50,9 +50,6 @@ def main():
   parser.add_argument('--new-file', required=True, help='Path to the new log file to merge')
   args = parser.parse_args()
 
-  if not args.base_file or not args.patch_file or not args.new_file:
-    logger.error("All file paths must be provided.")
-    return
   
   if not os.path.isfile(args.base_file):
     logger.error(f"Base file '{args.base_file}' does not exist.")
