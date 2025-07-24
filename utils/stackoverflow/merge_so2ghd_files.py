@@ -53,11 +53,11 @@ def main():
     
     if not os.path.isfile(args.base_file):
         logger.error(f"Base file '{args.base_file}' does not exist.")
-        return  
+        sys.exit(1)
     
     if not os.path.isfile(args.patch_file):
         logger.error(f"Patch file '{args.patch_file}' does not exist.")
-        return
+        sys.exit(1)
 
     logger.info(f"Starting merge of {args.base_file} and {args.patch_file} into {args.new_file}")
     merge_files = MergeFiles(args.base_file, args.patch_file, args.new_file)
