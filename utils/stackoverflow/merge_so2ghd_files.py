@@ -25,7 +25,7 @@ class MergeFiles:
             for line in self.lines_mapping.values():
                 merge_file.write(line + '\n')
 
-    def __read_file(self, file:str):
+    def __read_file(self, file: str):
         with open(file, 'r') as f:
             lines = f.readlines()
             for line in lines:
