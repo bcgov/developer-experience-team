@@ -239,6 +239,71 @@ Use the extracted JSON file as input to retry failed questions:
 python populate_discussion.py --repo owner/repo --category "Q&A" --questions-file retry_questions.json
 ```
 
+## Log File Merging (merge_so2ghd_files.py)
+A utility script for merging Stack Overflow to GitHub Discussions (so2ghd) redirect log files. This tool is particularly useful when you need to combine multiple migration runs or update existing redirect mappings with new entries.
+
+### Purpose
+During Stack Overflow migrations, redirect log files are created that map Stack Overflow URLs to their corresponding GitHub Discussion URLs. This script allows you to:
+- Merge redirect logs from multiple migration runs
+- Update existing redirects with new URLs
+- Combine partial migration logs into a complete redirect file
+
+### Requirements
+* Python 3.x
+* Both base and patch log files must exist
+* Log files should contain redirect entries in the format: `redir /path https://github.com/org/repo/discussions/### permanent`
+
+### Usage
+```
+python merge_so2ghd_files.py --base-file BASE_LOG --patch-file PATCH_LOG --new-file OUTPUT_LOG
+```
+
+#### Parameters
+- `--base-file` (required): Path to the base log file (existing redirects)
+- `--patch-file` (required): Path to the patch log file (new/updated redirects) 
+- `--new-file` (required): Path to the output merged log file
+
+#### Examples
+
+**Basic merge of two redirect logs:**
+```bash
+python merge_so2ghd_files.py --base-file migration_run1.log --patch-file migration_run2.log --new-file combined_redirects.log
+```
+
+**Merge multiple partial migration logs:**
+```bash
+# First merge
+python merge_so2ghd_files.py --base-file questions_redirects.log --patch-file answers_redirects.log --new-file temp_merge.log
+
+# Second merge  
+python merge_so2ghd_files.py --base-file temp_merge.log --patch-file comments_redirects.log --new-file complete_redirects.log
+```
+
+### File Format
+Both input and output files should contain redirect entries in this format:
+```
+redir /questions/1201 https://github.com/org/repo/discussions/2809 permanent
+redir /a/1203 https://github.com/org/repo/discussions/2810#discussioncomment-13836210 permanent
+redir /questions/1201/1202 https://github.com/org/repo/discussions/2809#discussioncomment-13836211 permanent
+```
+
+### Merge Behavior
+- **Overwrite Policy**: If the same path exists in both files, the patch file entry overwrites the base file entry
+- **Addition Policy**: New paths from the patch file are added to the output
+- **Validation**: Only valid redirect lines (4+ tokens starting with "redir") are processed
+- **Error Handling**: Invalid lines are logged as warnings and skipped
+
+### Output
+The script provides detailed feedback including:
+- File validation (checks that input files exist)
+- Merge completion confirmation
+- Warning messages for any invalid redirect lines encountered
+
+### Integration with Other Tools
+This script is commonly used in conjunction with:
+- `populate_discussion.py`: Creates the initial redirect logs during migration
+- **Caddy Server Configuration**: Output files can be used directly in Caddy rewrite rules
+
 ## Label Management (delete_all_labels.py)
 A utility script for deleting all labels in a GitHub repository. This tool is particularly useful for cleaning up repositories after Stack Overflow migrations or when you need to reset repository labels completely.
 
