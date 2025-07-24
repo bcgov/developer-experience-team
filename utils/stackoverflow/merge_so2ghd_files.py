@@ -11,10 +11,10 @@ class MergeFiles:
     """Class to handle merging of two so2ghd log files."""
     
   def __init__(self, base_file: str, patch_file: str, new_file: str):
-    self.base_file = base_file
-    self.patch_file = patch_file
-    self.new_file = new_file
-    self.lines_mapping = {}
+        self.base_file = base_file
+        self.patch_file = patch_file
+        self.new_file = new_file
+        self.lines_mapping = {}
     
   def merge(self):
     """Merge two so2ghd log files into a new file."""
