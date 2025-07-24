@@ -25,22 +25,22 @@ class MergeFiles:
       for line in self.lines_mapping.values():
         merge_file.write(line + '\n')
 
-  def __read_file(self, file:str):
-    with open(file, 'r') as f:
-      lines = f.readlines()
-      for line in lines:
-        stripped_line = line.strip()
-        # Skip empty lines or lines with only whitespace
-        if not stripped_line:
-          continue
-          
-        tokens = stripped_line.split()
-        # Valid redirect lines should have at least 4 tokens: redir, path, url, permanent
-        if len(tokens) >= 4 and tokens[0] == 'redir':
-          key = tokens[1]  # The path (e.g., /questions/1201)
-          self.lines_mapping[key] = stripped_line
-        else:
-          logger.warning(f"Skipping line in file '{file}': {stripped_line}")
+    def __read_file(self, file:str):
+        with open(file, 'r') as f:
+            lines = f.readlines()
+            for line in lines:
+                stripped_line = line.strip()
+                # Skip empty lines or lines with only whitespace
+                if not stripped_line:
+                    continue
+                
+                tokens = stripped_line.split()
+                # Valid redirect lines should have at least 4 tokens: redir, path, url, permanent
+                if len(tokens) >= 4 and tokens[0] == 'redir':
+                    key = tokens[1]  # The path (e.g., /questions/1201)
+                    self.lines_mapping[key] = stripped_line
+                else:
+                    logger.warning(f"Skipping line in file '{file}': {stripped_line}")
 
 
 def main():
