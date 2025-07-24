@@ -16,14 +16,14 @@ class MergeFiles:
         self.new_file = new_file
         self.lines_mapping = {}
     
-  def merge(self):
-    """Merge two so2ghd log files into a new file."""
-    self.__read_file(self.base_file)
-    self.__read_file(self.patch_file)
+    def merge(self):
+        """Merge two so2ghd log files into a new file."""
+        self.__read_file(self.base_file)
+        self.__read_file(self.patch_file)
 
-    with open(self.new_file, 'w') as merge_file:
-      for line in self.lines_mapping.values():
-        merge_file.write(line + '\n')
+        with open(self.new_file, 'w') as merge_file:
+            for line in self.lines_mapping.values():
+                merge_file.write(line + '\n')
 
     def __read_file(self, file:str):
         with open(file, 'r') as f:
