@@ -81,6 +81,25 @@ class TestFormatHeaderData(unittest.TestCase):
         result = format_header_data(data, MetaAction.ANSWERED)
         self.assertEqual(result, expected)
         
+    def test_format_header_with_GitHub_user(self):
+        """Test the format_header_data function with GitHub user."""
+        json_data = '{"owner": {"display_name": "Test User", "user_id": "1234"},"score": 1,"creation_date": 1752172239}'
+        github_mapping = {"1234": "GitHubUser1", "5678": "GitHubUser2"}
+        data = json.loads(json_data)
+        expected = f"> [!NOTE]\n> Originally asked by Test User (GitHubUser1) on Jul 10, 2025 at 18:30 UTC in BC Gov Stack Overflow.\n" + \
+           f"> It had 1 vote.\n\n"
+        result = format_header_data(data, MetaAction.ASKED, github_mapping)
+        self.assertEqual(result, expected)
+
+    def test_format_header_with_no_GitHub_user(self):
+        """Test the format_header_data function with GitHub user."""
+        json_data = '{"owner": {"display_name": "Test User", "user_id": "9999"},"score": 1,"creation_date": 1752172239}'
+        github_mapping = {"1234": "GitHubUser1", "5678": "GitHubUser2"}
+        data = json.loads(json_data)
+        expected = f"> [!NOTE]\n> Originally asked by Test User on Jul 10, 2025 at 18:30 UTC in BC Gov Stack Overflow.\n" + \
+           f"> It had 1 vote.\n\n"
+        result = format_header_data(data, MetaAction.ASKED, github_mapping)
+        self.assertEqual(result, expected)    
 
 class TestGetUrlRedirStr(unittest.TestCase):
     """Unit tests for the get_url_redir_str function."""

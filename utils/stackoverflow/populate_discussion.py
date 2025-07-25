@@ -568,7 +568,7 @@ def get_author_with_github_user(owner_data: Dict[str, Any], id_mapping: Optional
     else:
         # Log when user can't be found in mapping
         if user_id:
-            logger.info(f"User ID {user_id} (display_name: {display_name}) not found in GitHub mapping")
+            logger.warning(f"User ID {user_id} (display_name: {display_name}) not found in GitHub mapping")
         return display_name
 
 def load_id_mapping(mapping_file: str) -> Dict[str, str]:
@@ -594,11 +594,11 @@ def load_id_mapping(mapping_file: str) -> Dict[str, str]:
         logger.error(f"Error loading ID mapping file {mapping_file}: {e}")
         raise
 
-def format_header_data(json_data: Dict[str, Any], action: MetaAction) -> str:
+def format_header_data(json_data: Dict[str, Any], action: MetaAction, id_mapping: Optional[Dict[str, str]] = None) -> str:
     """Format metadata for the discussion note section."""
 
     formatted_creation_date = get_readable_date(json_data.get("creation_date"))
-    formatted_author = get_formatted_author(json_data)
+    formatted_author = get_author_with_github_user(json_data.get("owner", {}), id_mapping)
     score = json_data.get("score", 0)
     vote_label = "votes"
     if isinstance(score, int) and score == 1:
@@ -606,23 +606,6 @@ def format_header_data(json_data: Dict[str, Any], action: MetaAction) -> str:
 
     return f"> [!NOTE]\n> Originally {action.value} by {formatted_author} on {formatted_creation_date} in BC Gov Stack Overflow.\n" + \
            f"> It had {score} {vote_label}.\n\n"
-
-def get_formatted_author(json_data: Dict[str, Any]) -> str:
-    """
-    Get the formatted author name from the JSON data.
-    """
-    author = None
-    if 'owner' in json_data and json_data['owner']:
-        display_name = json_data['owner'].get('display_name')
-        if display_name:
-            author = display_name
-        else:
-            first = json_data['owner'].get('first_name', '')
-            last = json_data['owner'].get('last_name', '')
-            author = f"{first} {last}".strip() or None
-    if not author:
-        author = "Unknown User"
-    return author
 
 def main():
     # Setup logging for this script
@@ -761,7 +744,7 @@ def main():
             # --- IMAGE HANDLING FOR QUESTION BODY ---
             body = process_image_fields(body, local_image_folder, owner, name, repo, logger)
 
-            header = format_header_data(question, MetaAction.ASKED)
+            header = format_header_data(question, MetaAction.ASKED, id_mapping)
             body = header + body
 
             # Sort comments by creation_date (chronological order)
@@ -793,7 +776,7 @@ def main():
                 comment_body = decode_html_entities(comment.get('body', ''))
                 # --- IMAGE HANDLING FOR QUESTION COMMENT ---
                 comment_body = process_image_fields(comment_body, local_image_folder, owner, name, repo, logger)
-                comment_header = format_header_data(comment, MetaAction.COMMENTED)
+                comment_header = format_header_data(comment, MetaAction.COMMENTED, id_mapping)
                 comment_body = comment_header + comment_body
                 add_comment(github_graphql, owner, name, discussion_number, comment_body)
 
@@ -818,7 +801,7 @@ def main():
                 answer_body = process_image_fields(answer_body, local_image_folder, owner, name, repo, logger)
 
                
-                answer_header = format_header_data(answer, MetaAction.ANSWERED)
+                answer_header = format_header_data(answer, MetaAction.ANSWERED, id_mapping)
 
                 # Remove accepted answer header from body (handled by API now)
                 answer_body = answer_header + answer_body
@@ -839,8 +822,8 @@ def main():
                     # --- IMAGE HANDLING FOR ANSWER COMMENT ---
                     comment_body = process_image_fields(comment_body, local_image_folder, owner, name, repo, logger)
 
-            
-                    comment_header = format_header_data(comment, MetaAction.COMMENTED)
+
+                    comment_header = format_header_data(comment, MetaAction.COMMENTED, id_mapping)
                     comment_body = comment_header + comment_body
 
                     add_comment(github_graphql, owner, name, discussion_number, comment_body, comment_id)
