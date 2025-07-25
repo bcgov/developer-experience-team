@@ -14,11 +14,11 @@ from populate_discussion import (
     MetaAction
 )
 
-class TestFormatNoteMetaData(unittest.TestCase):
-    """Unit tests for the format_note_meta_data function."""
+class TestFormatHeaderData(unittest.TestCase):
+    """Unit tests for the format_header_data function."""
 
-    def test_format_note_meta_data(self):
-        """Test the format_note_meta_data function."""
+    def test_format_header_data(self):
+        """Test the format_header_data function."""
         json_data = '{"owner": {"display_name": "Test User"},"score": 1,"creation_date": 1752172239}'
         data = json.loads(json_data)
 
@@ -27,8 +27,8 @@ class TestFormatNoteMetaData(unittest.TestCase):
         result = format_header_data(data, MetaAction.ASKED)
         self.assertEqual(result, expected)
 
-    def test_format_note_meta_data_empty_author(self):
-        """Test the format_note_meta_data function."""
+    def test_format_header_data_empty_author(self):
+        """Test the format_header_data function."""
         json_data = '{"owner": {},"score": 0,"creation_date": 1752172239}'
         data = json.loads(json_data)
         expected = f"> [!NOTE]\n> Originally asked by Unknown User on Jul 10, 2025 at 18:30 UTC in BC Gov Stack Overflow.\n" + \
@@ -36,8 +36,8 @@ class TestFormatNoteMetaData(unittest.TestCase):
         result = format_header_data(data, MetaAction.ASKED)
         self.assertEqual(result, expected)
 
-    def test_format_note_meta_data_with_negative_score(self):   
-        """Test the format_note_meta_data function with negative score."""
+    def test_format_header_data_with_negative_score(self):   
+        """Test the format_header_data function with negative score."""
         json_data = '{"owner": {"display_name": "Test User"},"score": -2,"creation_date": 1752172239}'
         data = json.loads(json_data)
         expected = f"> [!NOTE]\n> Originally asked by Test User on Jul 10, 2025 at 18:30 UTC in BC Gov Stack Overflow.\n" + \
@@ -45,8 +45,8 @@ class TestFormatNoteMetaData(unittest.TestCase):
         result = format_header_data(data, MetaAction.ASKED)
         self.assertEqual(result, expected)
 
-    def test_format_note_meta_data_with_empty_date(self):   
-        """Test the format_note_meta_data function with empty date."""
+    def test_format_header_data_with_empty_date(self):   
+        """Test the format_header_data function with empty date."""
         json_data = '{"owner": {"display_name": "Test User"},"score": 1}'
         data = json.loads(json_data)
         expected = f"> [!NOTE]\n> Originally asked by Test User on Unknown Date in BC Gov Stack Overflow.\n" + \
@@ -54,8 +54,8 @@ class TestFormatNoteMetaData(unittest.TestCase):
         result = format_header_data(data, MetaAction.ASKED)
         self.assertEqual(result, expected)
 
-    def test_format_note_meta_data_with_empty_score(self):   
-        """Test the format_note_meta_data function with empty score."""
+    def test_format_header_data_with_empty_score(self):   
+        """Test the format_header_data function with empty score."""
         json_data = '{"owner": {"display_name": "Test User"},"creation_date": 1752172239}'
         data = json.loads(json_data)
         expected = f"> [!NOTE]\n> Originally asked by Test User on Jul 10, 2025 at 18:30 UTC in BC Gov Stack Overflow.\n" + \
@@ -63,8 +63,8 @@ class TestFormatNoteMetaData(unittest.TestCase):
         result = format_header_data(data, MetaAction.ASKED)
         self.assertEqual(result, expected)
 
-    def test_format_note_meta_data_with_comment_action(self):  
-        """Test the format_note_meta_data function with comment action."""
+    def test_format_header_data_with_comment_action(self):  
+        """Test the format_header_data function with comment action."""
         json_data = '{"owner": {"display_name": "Test User"},"score": 1,"creation_date": 1752172239}'
         data = json.loads(json_data)
         expected = f"> [!NOTE]\n> Originally commented on by Test User on Jul 10, 2025 at 18:30 UTC in BC Gov Stack Overflow.\n" + \
@@ -72,8 +72,8 @@ class TestFormatNoteMetaData(unittest.TestCase):
         result = format_header_data(data, MetaAction.COMMENTED)
         self.assertEqual(result, expected)
 
-    def test_format_note_meta_data_with_answered_action(self):
-        """Test the format_note_meta_data function with answered action."""
+    def test_format_header_data_with_answered_action(self):
+        """Test the format_header_data function with answered action."""
         json_data = '{"owner": {"display_name": "Test User"},"score": 1,"creation_date": 1752172239}'
         data = json.loads(json_data)
         expected = f"> [!NOTE]\n> Originally answered by Test User on Jul 10, 2025 at 18:30 UTC in BC Gov Stack Overflow.\n" + \
