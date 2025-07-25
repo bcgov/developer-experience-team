@@ -110,6 +110,7 @@ python populate_discussion.py --repo OWNER/REPO --category CATEGORY_NAME [option
 - `--category` (required): GitHub Discussion category name to post to
 - `--questions-file`: Path to questions JSON file (default: questions_answers_comments.json)
 - `--tags-file`: Path to tags JSON file (default: tags.json)
+- `--id-mapping`: Path to JSON file mapping user_id to github_login
 - `--limit`: Limit number of questions to process
 - `--image-folder`: Path to local folder containing images (default: discussion_images_temp)
 - `--clean`: Delete all discussions, comments, and labels before import

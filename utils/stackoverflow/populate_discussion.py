@@ -509,6 +509,66 @@ def mark_discussion_comment_as_answer(github_graphql, comment_node_id):
     logger.info(f"Marked comment {comment_node_id} as accepted answer.")
     return True
 
+def get_author_with_github_user(owner_data: Dict[str, Any], id_mapping: Optional[Dict[str, str]] = None) -> str:
+    """
+    Get the author name with optional GitHub username mapping.
+    
+    Args:
+        owner_data: The owner/user data from Stack Overflow
+        id_mapping: Optional dict mapping user_id (str) to github_login (str)
+        
+    Returns:
+        String in format "display_name (GitHub ID)" if mapping found, otherwise just display_name
+    """
+    if not owner_data:
+        return "Unknown User"
+    
+    # Get display name
+    display_name = owner_data.get('display_name')
+    if not display_name:
+        # Try first/last name if available
+        first = owner_data.get('first_name', '')
+        last = owner_data.get('last_name', '')
+        display_name = f"{first} {last}".strip() or "Unknown User"
+    
+    # If no mapping provided, return just the display name
+    if not id_mapping:
+        return display_name
+    
+    # Try to find GitHub username
+    user_id = str(owner_data.get('user_id', ''))
+    if user_id and user_id in id_mapping:
+        github_username = id_mapping[user_id]
+        return f"{display_name} ({github_username})"
+    else:
+        # Log when user can't be found in mapping
+        if user_id:
+            logger.info(f"User ID {user_id} (display_name: {display_name}) not found in GitHub mapping")
+        return display_name
+
+def load_id_mapping(mapping_file: str) -> Dict[str, str]:
+    """
+    Load the ID mapping from JSON file.
+    
+    Args:
+        mapping_file: Path to JSON file with user_id -> github_login mapping
+        
+    Returns:
+        Dict mapping user_id (str) to github_login (str)
+    """
+    try:
+        with open(mapping_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        # Convert all keys to strings to ensure consistency
+        id_mapping = {str(k): str(v) for k, v in data.items()}
+        
+        logger.info(f"Loaded {len(id_mapping)} user ID mappings from {mapping_file}")
+        return id_mapping
+    except Exception as e:
+        logger.error(f"Error loading ID mapping file {mapping_file}: {e}")
+        raise
+
 def main():
     # Setup logging for this script
     setup_populate_discussion_logging()
@@ -519,6 +579,7 @@ def main():
     parser.add_argument('--questions-file', default='questions_answers_comments.json',
                         help='Path to questions JSON file')
     parser.add_argument('--tags-file', default='tags.json', help='Path to tags JSON file')
+    parser.add_argument('--id-mapping', help='Path to JSON file mapping user_id to github_login')
     parser.add_argument('--limit', type=int, help='Limit number of questions to process')
     parser.add_argument('--image-folder', default='discussion_images_temp', help='Path to local folder containing images')
     parser.add_argument('--api-delay', type=float, default=1.0, help='Minimum seconds between API calls (default: 1.0)')
@@ -581,6 +642,11 @@ def main():
           
     tags_to_ignore_helper = TagsToIgnore(args.ignore_tags if args.ignore_tags else None)
     
+    # Load ID mapping if provided
+    id_mapping = None
+    if args.id_mapping:
+        id_mapping = load_id_mapping(args.id_mapping)
+    
     # Load data
     questions = load_json(args.questions_file)
     tags_data = load_json(args.tags_file)
@@ -641,18 +707,7 @@ def main():
             body = process_image_fields(body, local_image_folder, owner, name, repo, logger)
 
             # Extract author info and creation date
-            author_name = None
-            if 'owner' in question and question['owner']:
-                display_name = question['owner'].get('display_name')
-                if display_name:
-                    author_name = display_name
-                else:
-                    # Try first/last name if available
-                    first = question['owner'].get('first_name', '')
-                    last = question['owner'].get('last_name', '')
-                    author_name = f"{first} {last}".strip() or None
-            if not author_name:
-                author_name = "Unknown User"
+            author_name = get_author_with_github_user(question.get('owner'), id_mapping)
             creation_date = question.get('creation_date')
             creation_date = get_readable_date(creation_date)
             # Format author and date as a markdown NOTE block
@@ -689,17 +744,7 @@ def main():
                 # --- IMAGE HANDLING FOR QUESTION COMMENT ---
                 comment_body = process_image_fields(comment_body, local_image_folder, owner, name, repo, logger)
                 # Add commenter info and creation date if available
-                comment_author = None
-                if 'owner' in comment and comment['owner']:
-                    display_name = comment['owner'].get('display_name')
-                    if display_name:
-                        comment_author = display_name
-                    else:
-                        first = comment['owner'].get('first_name', '')
-                        last = comment['owner'].get('last_name', '')
-                        comment_author = f"{first} {last}".strip() or None
-                if not comment_author:
-                    comment_author = "Unknown User"
+                comment_author = get_author_with_github_user(comment.get('owner'), id_mapping)
                 comment_date = comment.get('creation_date')
                 comment_date = get_readable_date(comment_date)
                 comment_header = f"> [!NOTE]\n> Comment by {comment_author} on {comment_date}\n\n"
@@ -727,17 +772,7 @@ def main():
                 answer_body = process_image_fields(answer_body, local_image_folder, owner, name, repo, logger)
 
                 # Add owner info and creation date if available
-                answer_author = None
-                if 'owner' in answer and answer['owner']:
-                    display_name = answer['owner'].get('display_name')
-                    if display_name:
-                        answer_author = display_name
-                    else:
-                        first = answer['owner'].get('first_name', '')
-                        last = answer['owner'].get('last_name', '')
-                        answer_author = f"{first} {last}".strip() or None
-                if not answer_author:
-                    answer_author = "Unknown User"
+                answer_author = get_author_with_github_user(answer.get('owner'), id_mapping)
                 answer_date = answer.get('creation_date')
                 answer_date = get_readable_date(answer_date)
                 answer_header = f"> [!NOTE]\n> Originally answered by {answer_author} on {answer_date}\n\n"
@@ -762,17 +797,7 @@ def main():
                     comment_body = process_image_fields(comment_body, local_image_folder, owner, name, repo, logger)
 
                     # Add commenter info and creation date if available
-                    comment_author = None
-                    if 'owner' in comment and comment['owner']:
-                        display_name = comment['owner'].get('display_name')
-                        if display_name:
-                            comment_author = display_name
-                        else:
-                            first = comment['owner'].get('first_name', '')
-                            last = comment['owner'].get('last_name', '')
-                            comment_author = f"{first} {last}".strip() or None
-                    if not comment_author:
-                        comment_author = "Unknown User"
+                    comment_author = get_author_with_github_user(comment.get('owner'), id_mapping)
                     comment_date = comment.get('creation_date')
                     comment_date = get_readable_date(comment_date)
                     comment_header = f"> [!NOTE]\n> Comment by {comment_author} on {comment_date}\n\n"
