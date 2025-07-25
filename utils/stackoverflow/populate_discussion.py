@@ -10,8 +10,8 @@ from urllib.parse import urlparse
 import html
 from collections import namedtuple
 from datetime import datetime, timezone, timedelta
-from populate_discussion_helpers import RateLimiter, GitHubAuthManager, GraphQLHelper
 from enum import StrEnum
+from populate_discussion_helpers import RateLimiter, GitHubAuthManager, GraphQLHelper
 
 
 # Get logger for this module
@@ -493,9 +493,16 @@ def get_readable_date(the_date):
                 # Handle Unix timestamp
                 dt = datetime.fromtimestamp(the_date, tz=timezone.utc)
             elif isinstance(the_date, str):
-                # Handle ISO 8601 datetime string like "2023-06-28T13:00:59.323"
-                # Assume the string is in UTC format. Data in the json file is in UTC.
-                dt = datetime.fromisoformat(the_date).replace(tzinfo=timezone.utc)
+                # Handle ISO 8601 datetime string like "2023-06-28T13:00:59.323".
+                # If the string does not include a timezone indicator, it is assumed to be in UTC.
+                # Data in the json file is expected to be in UTC format.
+                dt = datetime.fromisoformat(the_date)
+                if dt.tzinfo is not None:
+                    # Convert timezone-aware datetime to UTC
+                    dt = dt.astimezone(timezone.utc)
+                else:
+                    # Assume naive datetime is in UTC
+                    dt = dt.replace(tzinfo=timezone.utc)
             else:
                 logger.warning(f"date is not instance of int, float, or string: {type(the_date)} - {the_date}")
                 return unknown_date
