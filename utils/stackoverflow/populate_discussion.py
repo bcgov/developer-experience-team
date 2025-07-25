@@ -533,12 +533,12 @@ def format_header_data(json_data: Dict[str, Any], action: MetaAction) -> str:
     formatted_creation_date = get_readable_date(json_data.get("creation_date"))
     formatted_author = get_formatted_author(json_data)
     score = json_data.get("score", 0)
-    vote = "votes"
+    vote_label = "votes"
     if isinstance(score, int) and score == 1:
-        vote = "vote"
+        vote_label = "vote"
 
     return f"> [!NOTE]\n> Originally {action.value} by {formatted_author} on {formatted_creation_date} in BC Gov Stack Overflow.\n" + \
-           f"> It had {score} {vote}.\n\n"
+           f"> It had {score} {vote_label}.\n\n"
 
 def get_formatted_author(json_data: Dict[str, Any]) -> str:
     """
