@@ -534,6 +534,66 @@ def mark_discussion_comment_as_answer(github_graphql, comment_node_id):
     logger.info(f"Marked comment {comment_node_id} as accepted answer.")
     return True
 
+def get_author_with_github_user(owner_data: Dict[str, Any], id_mapping: Optional[Dict[str, str]] = None) -> str:
+    """
+    Get the author name with optional GitHub username mapping.
+    
+    Args:
+        owner_data: The owner/user data from Stack Overflow
+        id_mapping: Optional dict mapping user_id (str) to github_login (str)
+        
+    Returns:
+        String in format "display_name (GitHub ID)" if mapping found, otherwise just display_name
+    """
+    if not owner_data:
+        return "Unknown User"
+    
+    # Get display name
+    display_name = owner_data.get('display_name')
+    if not display_name:
+        # Try first/last name if available
+        first = owner_data.get('first_name', '')
+        last = owner_data.get('last_name', '')
+        display_name = f"{first} {last}".strip() or "Unknown User"
+    
+    # If no mapping provided, return just the display name
+    if not id_mapping:
+        return display_name
+    
+    # Try to find GitHub username
+    user_id = str(owner_data.get('user_id', ''))
+    if user_id and user_id in id_mapping:
+        github_username = id_mapping[user_id]
+        return f"{display_name} ({github_username})"
+    else:
+        # Log when user can't be found in mapping
+        if user_id:
+            logger.info(f"User ID {user_id} (display_name: {display_name}) not found in GitHub mapping")
+        return display_name
+
+def load_id_mapping(mapping_file: str) -> Dict[str, str]:
+    """
+    Load the ID mapping from JSON file.
+    
+    Args:
+        mapping_file: Path to JSON file with user_id -> github_login mapping
+        
+    Returns:
+        Dict mapping user_id (str) to github_login (str)
+    """
+    try:
+        with open(mapping_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        # Convert all keys to strings to ensure consistency
+        id_mapping = {str(k): str(v) for k, v in data.items()}
+        
+        logger.info(f"Loaded {len(id_mapping)} user ID mappings from {mapping_file}")
+        return id_mapping
+    except Exception as e:
+        logger.error(f"Error loading ID mapping file {mapping_file}: {e}")
+        raise
+
 def format_header_data(json_data: Dict[str, Any], action: MetaAction) -> str:
     """Format metadata for the discussion note section."""
 
@@ -574,6 +634,7 @@ def main():
     parser.add_argument('--questions-file', default='questions_answers_comments.json',
                         help='Path to questions JSON file')
     parser.add_argument('--tags-file', default='tags.json', help='Path to tags JSON file')
+    parser.add_argument('--id-mapping', help='Path to JSON file mapping user_id to github_login')
     parser.add_argument('--limit', type=int, help='Limit number of questions to process')
     parser.add_argument('--image-folder', default='discussion_images_temp', help='Path to local folder containing images')
     parser.add_argument('--api-delay', type=float, default=1.0, help='Minimum seconds between API calls (default: 1.0)')
@@ -635,6 +696,11 @@ def main():
             return
           
     tags_to_ignore_helper = TagsToIgnore(args.ignore_tags if args.ignore_tags else None)
+    
+    # Load ID mapping if provided
+    id_mapping = None
+    if args.id_mapping:
+        id_mapping = load_id_mapping(args.id_mapping)
     
     # Load data
     questions = load_json(args.questions_file)
