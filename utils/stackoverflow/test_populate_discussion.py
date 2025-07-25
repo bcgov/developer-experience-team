@@ -9,9 +9,78 @@ from populate_discussion import (
     TagsToIgnore,
     remove_tags_under_threshold,
     get_tags_under_threshold, 
-    get_tags_at_or_above_threshold
+    get_tags_at_or_above_threshold,
+    format_header_data,
+    MetaAction
 )
 
+class TestFormatNoteMetaData(unittest.TestCase):
+    """Unit tests for the format_note_meta_data function."""
+
+    def test_format_note_meta_data(self):
+        """Test the format_note_meta_data function."""
+        json_data = '{"owner": {"display_name": "Test User"},"score": 1,"creation_date": 1752172239}'
+        data = json.loads(json_data)
+
+        expected = f"> [!NOTE]\n> Originally asked by Test User on Jul 10, 2025 at 18:30 UTC in BC Gov Stack Overflow.\n" + \
+           f"> It had 1 vote.\n\n"
+        result = format_header_data(data, MetaAction.ASKED)
+        self.assertEqual(result, expected)
+
+    def test_format_note_meta_data_empty_author(self):
+        """Test the format_note_meta_data function."""
+        json_data = '{"owner": {},"score": 0,"creation_date": 1752172239}'
+        data = json.loads(json_data)
+        expected = f"> [!NOTE]\n> Originally asked by Unknown User on Jul 10, 2025 at 18:30 UTC in BC Gov Stack Overflow.\n" + \
+           f"> It had 0 votes.\n\n"
+        result = format_header_data(data, MetaAction.ASKED)
+        self.assertEqual(result, expected)
+
+    def test_format_note_meta_data_with_negative_score(self):   
+        """Test the format_note_meta_data function with negative score."""
+        json_data = '{"owner": {"display_name": "Test User"},"score": -2,"creation_date": 1752172239}'
+        data = json.loads(json_data)
+        expected = f"> [!NOTE]\n> Originally asked by Test User on Jul 10, 2025 at 18:30 UTC in BC Gov Stack Overflow.\n" + \
+           f"> It had -2 votes.\n\n"
+        result = format_header_data(data, MetaAction.ASKED)
+        self.assertEqual(result, expected)
+
+    def test_format_note_meta_data_with_empty_date(self):   
+        """Test the format_note_meta_data function with empty date."""
+        json_data = '{"owner": {"display_name": "Test User"},"score": 1}'
+        data = json.loads(json_data)
+        expected = f"> [!NOTE]\n> Originally asked by Test User on Unknown Date in BC Gov Stack Overflow.\n" + \
+           f"> It had 1 vote.\n\n"
+        result = format_header_data(data, MetaAction.ASKED)
+        self.assertEqual(result, expected)
+
+    def test_format_note_meta_data_with_empty_score(self):   
+        """Test the format_note_meta_data function with empty score."""
+        json_data = '{"owner": {"display_name": "Test User"},"creation_date": 1752172239}'
+        data = json.loads(json_data)
+        expected = f"> [!NOTE]\n> Originally asked by Test User on Jul 10, 2025 at 18:30 UTC in BC Gov Stack Overflow.\n" + \
+           f"> It had 0 votes.\n\n"
+        result = format_header_data(data, MetaAction.ASKED)
+        self.assertEqual(result, expected)
+
+    def test_format_note_meta_data_with_comment_action(self):  
+        """Test the format_note_meta_data function with comment action."""
+        json_data = '{"owner": {"display_name": "Test User"},"score": 1,"creation_date": 1752172239}'
+        data = json.loads(json_data)
+        expected = f"> [!NOTE]\n> Originally commented on by Test User on Jul 10, 2025 at 18:30 UTC in BC Gov Stack Overflow.\n" + \
+           f"> It had 1 vote.\n\n"
+        result = format_header_data(data, MetaAction.COMMENTED)
+        self.assertEqual(result, expected)
+
+    def test_format_note_meta_data_with_answered_action(self):
+        """Test the format_note_meta_data function with answered action."""
+        json_data = '{"owner": {"display_name": "Test User"},"score": 1,"creation_date": 1752172239}'
+        data = json.loads(json_data)
+        expected = f"> [!NOTE]\n> Originally answered by Test User on Jul 10, 2025 at 18:30 UTC in BC Gov Stack Overflow.\n" + \
+           f"> It had 1 vote.\n\n"
+        result = format_header_data(data, MetaAction.ANSWERED)
+        self.assertEqual(result, expected)
+        
 
 class TestGetUrlRedirStr(unittest.TestCase):
     """Unit tests for the get_url_redir_str function."""
@@ -91,7 +160,7 @@ class TestGetReadableDate(unittest.TestCase):
         """Test conversion of Unix timestamp to readable date."""
         # Test with a known timestamp: 2025-01-15 10:10:00 UTC
         timestamp = 1736935800
-        expected = "2025-01-15 10:10:00 UTC"
+        expected = "Jan 15, 2025 at 10:10 UTC"
         result = get_readable_date(timestamp)
         self.assertEqual(result, expected)
 
@@ -99,7 +168,7 @@ class TestGetReadableDate(unittest.TestCase):
         """Test conversion of float timestamp to readable date."""
         # Test with a float timestamp
         timestamp = 1736935800.123
-        expected = "2025-01-15 10:10:00 UTC"
+        expected = "Jan 15, 2025 at 10:10 UTC"
         result = get_readable_date(timestamp)
         self.assertEqual(result, expected)
 
@@ -112,7 +181,7 @@ class TestGetReadableDate(unittest.TestCase):
     def test_negative_timestamp(self):
         """Test with negative timestamp (before Unix epoch)."""
         timestamp = -86400  # One day before epoch
-        expected = "1969-12-31 00:00:00 UTC"
+        expected = "Dec 31, 1969 at 00:00 UTC"
         result = get_readable_date(timestamp)
         self.assertEqual(result, expected)
 
@@ -126,11 +195,54 @@ class TestGetReadableDate(unittest.TestCase):
         result = get_readable_date("")
         self.assertEqual(result, "Unknown Date")
 
-    def test_string_date_passthrough(self):
-        """Test with string date that should pass through unchanged."""
+    def test_string_date(self):
+        """Test with string date."""
         date_string = "2025-06-15 14:30:00"
+        expected = "Jun 15, 2025 at 14:30 UTC"
         result = get_readable_date(date_string)
-        self.assertEqual(result, date_string)
+        self.assertEqual(result, expected)
+
+    def test_ISO8601_date(self):
+        """Test with ISO 8601 date string."""
+        iso_date = "2025-01-15T10:10:00Z"
+        expected = "Jan 15, 2025 at 10:10 UTC"
+        result = get_readable_date(iso_date)
+        self.assertEqual(result, expected)
+
+    def test_ISO8601_date_with_timezone_offset(self):
+        """Test with ISO 8601 date string with timezone offset."""
+        iso_date = "2025-01-15T10:10:00+00:00"
+        expected = "Jan 15, 2025 at 10:10 UTC"
+        result = get_readable_date(iso_date)
+        self.assertEqual(result, expected)
+
+    def test_ISO8601_date_with_UTC_suffix(self):
+        """Test with ISO 8601 date with UTC suffix."""
+        iso_date = "2025-01-15T10:10:00.323UTC" 
+        expected = "Jan 15, 2025 at 10:10 UTC"
+        result = get_readable_date(iso_date)
+        self.assertEqual(result, expected)
+
+    def test_ISO8601_date_with_no_suffix(self):
+        """Test with ISO 8601 date without suffix."""
+        iso_date = "2025-01-15T10:10:00.198"
+        expected = "Jan 15, 2025 at 10:10 UTC"
+        result = get_readable_date(iso_date)
+        self.assertEqual(result, expected)
+
+    def test_invalid_string(self):
+        """Test with invalid date format"""
+        date_string = "this-is-not-a-date"
+        result = get_readable_date(date_string)
+        self.assertEqual(result, "Unknown Date")
+
+
+    def test_invalid_date_format(self):
+        """Test with invalid date format"""
+        date_string = "Jan 15 2025 14:30:00"
+        result = get_readable_date(date_string)
+        self.assertEqual(result, "Unknown Date")
+
 
     def test_invalid_timestamp(self):
         """Test with invalid timestamp that causes exception."""
@@ -138,14 +250,14 @@ class TestGetReadableDate(unittest.TestCase):
         invalid_timestamp = 999999999999999
         result = get_readable_date(invalid_timestamp)
         # Should return the original value when conversion fails
-        self.assertEqual(result, invalid_timestamp)
+        self.assertEqual(result, "Unknown Date")
 
     def test_string_number_conversion(self):
         """Test with string representation of a number."""
         # This should not be converted as it's a string, not int/float
         timestamp_string = "1736935800"
         result = get_readable_date(timestamp_string)
-        self.assertEqual(result, timestamp_string)
+        self.assertEqual(result, "Unknown Date")
 
     def test_boolean_false(self):
         """Test with boolean False."""
@@ -155,7 +267,7 @@ class TestGetReadableDate(unittest.TestCase):
     def test_boolean_true(self):
         """Test with boolean True (which equals 1 in numeric context)."""
         result = get_readable_date(True)
-        expected = "1970-01-01 00:00:01 UTC"
+        expected = "Jan 01, 1970 at 00:00 UTC"
         self.assertEqual(result, expected)
 
 
