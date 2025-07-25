@@ -494,16 +494,8 @@ def get_readable_date(the_date):
                 dt = datetime.fromtimestamp(the_date, tz=timezone.utc)
             elif isinstance(the_date, str):
                 # Handle ISO 8601 datetime string like "2023-06-28T13:00:59.323"
-                # Parse the ISO string and ensure it's in UTC
-                if the_date.endswith('Z'):
-                    # Already has UTC indicator
-                    dt = datetime.fromisoformat(the_date.replace('Z', '+00:00'))
-                elif '+' in the_date or the_date.endswith('UTC'):
-                    # Has timezone info or UTC suffix
-                    dt = datetime.fromisoformat(the_date.replace('UTC', '+00:00'))
-                else:
-                    # Assume UTC if no timezone specified
-                    dt = datetime.fromisoformat(the_date).replace(tzinfo=timezone.utc)
+                # Assume the string is in UTC format. Data in the json file is in UTC.
+                dt = datetime.fromisoformat(the_date).replace(tzinfo=timezone.utc)
             else:
                 logger.warning(f"date is not instance of int, float, or string: {type(the_date)} - {the_date}")
                 return unknown_date
