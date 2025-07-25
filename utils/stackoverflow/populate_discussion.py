@@ -10,8 +10,8 @@ from urllib.parse import urlparse
 import html
 from collections import namedtuple
 from datetime import datetime, timezone, timedelta
-from populate_discussion_helpers import RateLimiter, GitHubAuthManager, GraphQLHelper
 from enum import StrEnum
+from populate_discussion_helpers import RateLimiter, GitHubAuthManager, GraphQLHelper
 
 
 # Get logger for this module
