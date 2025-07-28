@@ -4,7 +4,7 @@ import duckdb as dd
 # dd.sql("select users.email, count(*) as question_count from './users.json' as users, './questions_answers_comments.json' as questions where questions.owner.user_id=users.user_id group by users.email order by question_count desc").show()
 # dd.sql("select len(questions.answers) from './questions_answers_comments.json' as questions").show()
 
-dd.sql("select * from './questions_answers_comments.json' as questions where questions.question_id=1297").show()
+# dd.sql("select * from './questions_answers_comments.json' as questions where questions.question_id=1297").show()
 # dd.sql("select len(questions.answers) from './questions_answers_comments.json' as questions where questions.question_id=1297").show()
 # dd.sql("select select users.emil, questions.answers.owner from './questions_answers_comments.json' as questions where questions.question_id=1297").show()
 # dd.sql("select questions.answers from './questions_answers_comments.json' as questions").show()
@@ -20,3 +20,4 @@ dd.sql("select * from './questions_answers_comments.json' as questions where que
 # dd.sql("select questions.question_id, questions.title, from './discussions_to_add.json' as questions where list_contains(questions.tags, 'openshift')").show()
 # dd.sql("select questions.question_id, questions.title, questions.tags from './discussions_to_add.json' as questions order by questions.question_id").show()
 # dd.sql("select tags.name, tags.count, age(to_timestamp(tags.last_activity_date)) from './tags.json' as tags where tags.count < 2 order by tags.last_activity_date desc, tags.count desc").show()
+dd.sql("select question_id, view_count from './questions_answers_comments.json' as questions where view_count >= 100 order by view_count desc").show()
