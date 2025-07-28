@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 import html
 from collections import namedtuple
 from datetime import datetime, timezone, timedelta
-import time
+from enum import StrEnum
 from populate_discussion_helpers import RateLimiter, GitHubAuthManager, GraphQLHelper
 
 
@@ -21,6 +21,10 @@ logger = logging.getLogger(__name__)
 url_mapping_logger = logging.getLogger('url_mapping')
 
 Category = namedtuple('Category', ['id', 'name'])
+class MetaAction(StrEnum):
+    ANSWERED = "answered"
+    ASKED = "asked"
+    COMMENTED = "commented on"
 
 # Setup logging - only when running as main script
 def setup_populate_discussion_logging():
@@ -481,15 +485,36 @@ def get_tags_at_or_above_threshold(min_threshold: int, tags_data: List[Dict[str,
     return [tag for tag in tags_data if tag.get('count', 0) >= min_threshold]
 
 def get_readable_date(the_date):
-    """Convert creation_date to a readable string format."""
+    """Convert creation_date to a readable string format"""
+    unknown_date = "Unknown Date"
     if the_date:
         try:
             if isinstance(the_date, (int, float)):
-                the_date = datetime.fromtimestamp(the_date, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S %Z')
-        except Exception:
-            pass
+                # Handle Unix timestamp
+                dt = datetime.fromtimestamp(the_date, tz=timezone.utc)
+            elif isinstance(the_date, str):
+                # Handle ISO 8601 datetime string like "2023-06-28T13:00:59.323".
+                # If the string does not include a timezone indicator, it is assumed to be in UTC.
+                # Data in the json file is expected to be in UTC format.
+                dt = datetime.fromisoformat(the_date)
+                if dt.tzinfo is not None:
+                    # Convert timezone-aware datetime to UTC
+                    dt = dt.astimezone(timezone.utc)
+                else:
+                    # Assume naive datetime is in UTC
+                    dt = dt.replace(tzinfo=timezone.utc)
+            else:
+                logger.warning(f"date is not instance of int, float, or string: {type(the_date)} - {the_date}")
+                return unknown_date
+            
+            # Apply consistent formatting to both cases
+            the_date = dt.strftime('%b %d, %Y at %H:%M %Z')
+            
+        except Exception as e:
+            logger.error(f"Error converting date '{the_date}': {e}")
+            the_date = unknown_date
     else:
-        the_date = "Unknown Date"
+        the_date = unknown_date
     return the_date
 
 
@@ -543,7 +568,7 @@ def get_author_with_github_user(owner_data: Dict[str, Any], id_mapping: Optional
     else:
         # Log when user can't be found in mapping
         if user_id:
-            logger.info(f"User ID {user_id} (display_name: {display_name}) not found in GitHub mapping")
+            logger.warning(f"User ID {user_id} (display_name: {display_name}) not found in GitHub mapping")
         return display_name
 
 def load_id_mapping(mapping_file: str) -> Dict[str, str]:
@@ -583,6 +608,19 @@ def is_popular(question: Dict[str, Any], popular_tag_min_threshold: int) -> bool
     """
     view_count = question.get('view_count', 0)
     return view_count >= popular_tag_min_threshold
+
+def format_header_data(json_data: Dict[str, Any], action: MetaAction, id_mapping: Optional[Dict[str, str]] = None) -> str:
+    """Format metadata for the discussion note section."""
+
+    formatted_creation_date = get_readable_date(json_data.get("creation_date"))
+    formatted_author = get_author_with_github_user(json_data.get("owner", {}), id_mapping)
+    score = json_data.get("score", 0)
+    vote_label = "votes"
+    if isinstance(score, int) and score == 1:
+        vote_label = "vote"
+
+    return f"> [!NOTE]\n> Originally {action.value} by {formatted_author} on {formatted_creation_date} in BC Gov Stack Overflow.\n" + \
+           f"> It had {score} {vote_label}.\n\n"
 
 def main():
     # Setup logging for this script
@@ -737,12 +775,7 @@ def main():
             # --- IMAGE HANDLING FOR QUESTION BODY ---
             body = process_image_fields(body, local_image_folder, owner, name, repo, logger)
 
-            # Extract author info and creation date
-            author_name = get_author_with_github_user(question.get('owner'), id_mapping)
-            creation_date = question.get('creation_date')
-            creation_date = get_readable_date(creation_date)
-            # Format author and date as a markdown NOTE block
-            header = f"> [!NOTE]\n> Originally asked in BC Gov Stack Overflow by {author_name} on {creation_date}\n\n"
+            header = format_header_data(question, MetaAction.ASKED, id_mapping)
             body = header + body
 
             # Sort comments by creation_date (chronological order)
@@ -774,11 +807,7 @@ def main():
                 comment_body = decode_html_entities(comment.get('body', ''))
                 # --- IMAGE HANDLING FOR QUESTION COMMENT ---
                 comment_body = process_image_fields(comment_body, local_image_folder, owner, name, repo, logger)
-                # Add commenter info and creation date if available
-                comment_author = get_author_with_github_user(comment.get('owner'), id_mapping)
-                comment_date = comment.get('creation_date')
-                comment_date = get_readable_date(comment_date)
-                comment_header = f"> [!NOTE]\n> Comment by {comment_author} on {comment_date}\n\n"
+                comment_header = format_header_data(comment, MetaAction.COMMENTED, id_mapping)
                 comment_body = comment_header + comment_body
                 add_comment(github_graphql, owner, name, discussion_number, comment_body)
 
@@ -802,11 +831,8 @@ def main():
                 # --- IMAGE HANDLING FOR ANSWER BODY ---
                 answer_body = process_image_fields(answer_body, local_image_folder, owner, name, repo, logger)
 
-                # Add owner info and creation date if available
-                answer_author = get_author_with_github_user(answer.get('owner'), id_mapping)
-                answer_date = answer.get('creation_date')
-                answer_date = get_readable_date(answer_date)
-                answer_header = f"> [!NOTE]\n> Originally answered by {answer_author} on {answer_date}\n\n"
+               
+                answer_header = format_header_data(answer, MetaAction.ANSWERED, id_mapping)
 
                 # Remove accepted answer header from body (handled by API now)
                 answer_body = answer_header + answer_body
@@ -827,11 +853,8 @@ def main():
                     # --- IMAGE HANDLING FOR ANSWER COMMENT ---
                     comment_body = process_image_fields(comment_body, local_image_folder, owner, name, repo, logger)
 
-                    # Add commenter info and creation date if available
-                    comment_author = get_author_with_github_user(comment.get('owner'), id_mapping)
-                    comment_date = comment.get('creation_date')
-                    comment_date = get_readable_date(comment_date)
-                    comment_header = f"> [!NOTE]\n> Comment by {comment_author} on {comment_date}\n\n"
+
+                    comment_header = format_header_data(comment, MetaAction.COMMENTED, id_mapping)
                     comment_body = comment_header + comment_body
 
                     add_comment(github_graphql, owner, name, discussion_number, comment_body, comment_id)
