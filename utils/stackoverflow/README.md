@@ -119,6 +119,7 @@ python populate_discussion.py --repo OWNER/REPO --category CATEGORY_NAME [option
 - `--api-delay`: Minimum seconds between API calls (default: 1.0)
 - `--ignore-tags`: List of tags to ignore (space-separated). Questions tagged with these tag(s) will not be processed.
 - `--tag-min-threshold`: Minimum number of questions a tag must be associated with to be considered for label creation (default: 1)
+- `--popular-tag-min-threshold`: Minimum number of views a question must have in SO for the `popular-in-so` label to be applied to it (default: 200)
 
 #### Example
 ```

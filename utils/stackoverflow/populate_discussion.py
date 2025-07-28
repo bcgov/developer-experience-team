@@ -594,6 +594,21 @@ def load_id_mapping(mapping_file: str) -> Dict[str, str]:
         logger.error(f"Error loading ID mapping file {mapping_file}: {e}")
         raise
 
+
+def is_popular(question: Dict[str, Any], popular_tag_min_threshold: int) -> bool:
+    """
+    Determine if a question is popular based on view count.
+
+    Args:
+        question: The question data dictionary
+        popular_tag_min_threshold: The minimum view count to be considered popular
+
+    Returns:
+        True if the the view_count is at or above the threshold, False otherwise
+    """
+    view_count = question.get('view_count', 0)
+    return view_count >= popular_tag_min_threshold
+
 def format_header_data(json_data: Dict[str, Any], action: MetaAction, id_mapping: Optional[Dict[str, str]] = None) -> str:
     """Format metadata for the discussion note section."""
 
@@ -633,6 +648,11 @@ def main():
                          type=int,
                          default=1,
                          help='Minimum number of questions a tag must be associated with to be considered for label creation (default: 1)')
+    parser.add_argument('--popular-tag-min-threshold',
+                         type=int,
+                         default=200,
+                         help='Minimum number of views a question must have in SO for the `popular-in-so` label to be applied to it (default: 200)')
+    
     args = parser.parse_args()
 
     if args.tag_min_threshold < 0:
@@ -643,12 +663,17 @@ def main():
         logger.warning("Negative API delay specified, defaulting to 1.0 seconds")
         args.api_delay = 1.0
 
+    if args.popular_tag_min_threshold < 0:
+        logger.warning("Negative popular tag minimum threshold specified, defaulting to 200")
+        args.popular_tag_min_threshold = 200
+
     # Set the global API delay based on user preference
     rate_limiter = RateLimiter(min_interval=args.api_delay)
     logger.info(f"Using API delay of {args.api_delay} seconds between requests")
 
     SO_LINK = "link"
     SO_SHARE_LINK = "share_link"
+    POPULAR_TAG_NAME = "popular-in-so"
 
     # Initialize GitHub authentication
     github_auth_manager = GitHubAuthManager()
@@ -701,6 +726,10 @@ def main():
         if tag_name not in existing_labels and not tags_to_ignore_helper.should_ignore([tag_name]):
             create_label(repo, tag_name, description)
 
+    # Add popular tag label if it doesn't exist
+    if POPULAR_TAG_NAME not in existing_labels:
+        create_label(repo, POPULAR_TAG_NAME, f'This question was viewed at least {args.popular_tag_min_threshold} times on BC Gov Stack Overflow')
+
     logger.info(f"category_id for '{args.category}': {category_id}")
 
     # Process questions with limit if specified
@@ -729,6 +758,8 @@ def main():
                 continue
             
             tags = remove_tags_under_threshold(tags_under_threshold, tags)
+            if is_popular(question, args.popular_tag_min_threshold):
+                tags.append(POPULAR_TAG_NAME)
 
             body = question.get('body', '')
 

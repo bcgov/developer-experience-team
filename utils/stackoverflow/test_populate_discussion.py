@@ -11,8 +11,36 @@ from populate_discussion import (
     get_tags_under_threshold, 
     get_tags_at_or_above_threshold,
     format_header_data,
-    MetaAction
+    MetaAction,
+    is_popular
 )
+
+class TestIsPopular(unittest.TestCase):
+    """Unit tests for the is_popular function."""
+
+    def test_is_popular_above_threshold(self):
+        """Test with question views above the threshold."""
+        question = {'view_count': 150}
+        threshold = 100
+        self.assertTrue(is_popular(question, threshold))
+
+    def test_is_popular_equal_to_threshold(self):
+        """Test with question views equal to the threshold."""
+        question = {'view_count': 100}
+        threshold = 100
+        self.assertTrue(is_popular(question, threshold))
+
+    def test_is_not_popular_below_threshold(self):
+        """Test with question views below the threshold."""
+        question = {'view_count': 50}
+        threshold = 100
+        self.assertFalse(is_popular(question, threshold))
+
+    def test_is_popular_no_view_count(self):
+        """Test with question that has no view count."""
+        question = {}
+        threshold = 100
+        self.assertFalse(is_popular(question, threshold))
 
 class TestFormatHeaderData(unittest.TestCase):
     """Unit tests for the format_header_data function."""
@@ -100,7 +128,7 @@ class TestFormatHeaderData(unittest.TestCase):
            f"> It had 1 vote.\n\n"
         result = format_header_data(data, MetaAction.ASKED, github_mapping)
         self.assertEqual(result, expected)    
-
+        
 class TestGetUrlRedirStr(unittest.TestCase):
     """Unit tests for the get_url_redir_str function."""
 
