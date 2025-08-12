@@ -11,6 +11,7 @@ import os
 import time
 from typing import List, Dict, Optional, Tuple
 from playwright.async_api import async_playwright, Browser, BrowserContext, Page
+from urllib.parse import urlparse
 
 # Setup logging
 logging.basicConfig(
@@ -147,10 +148,12 @@ class PlaywrightURLValidator:
                     await self.page.wait_for_load_state('domcontentloaded', timeout=15000)
                     
                     final_url = self.page.url
-                    logger.info(f"Final URL after SSO: {final_url}")
-                    
+                                   
                     # Verify we're actually on the org page
-                    if 'github.com' in final_url and org in final_url and 'login.microsoftonline.com' not in final_url:
+                    parsed_url = urlparse(final_url)
+                    hostname = parsed_url.hostname or ""
+                    
+                    if hostname == "github.com" and org in final_url and 'login.microsoftonline.com' not in final_url:
                         print(f"\n✓ SSO authentication successful for {org}!")
                         logger.info(f"✓ SSO authentication successful for {org}!")
                         return True
