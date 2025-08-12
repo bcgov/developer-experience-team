@@ -809,7 +809,9 @@ def main():
                 comment_body = process_image_fields(comment_body, local_image_folder, owner, name, repo, logger)
                 comment_header = format_header_data(comment, MetaAction.COMMENTED, id_mapping)
                 comment_body = comment_header + comment_body
-                add_comment(github_graphql, owner, name, discussion_number, comment_body)
+                _, github_comment_url = add_comment(github_graphql, owner, name, discussion_number, comment_body)
+                # comments don't have a share link
+                log_url_mapping([comment.get(SO_LINK)], github_comment_url) 
 
             # Add answers as comments (chronological order)
             accepted_answer_id = question.get('accepted_answer_id')
@@ -857,7 +859,9 @@ def main():
                     comment_header = format_header_data(comment, MetaAction.COMMENTED, id_mapping)
                     comment_body = comment_header + comment_body
 
-                    add_comment(github_graphql, owner, name, discussion_number, comment_body, comment_id)
+                    _, github_comment_url = add_comment(github_graphql, owner, name, discussion_number, comment_body, comment_id)
+                    # comments don't have a share link
+                    log_url_mapping([comment.get(SO_LINK)], github_comment_url) 
 
             # Mark accepted answer using API if available
             if accepted_answer_id and accepted_answer_id in answer_id_to_comment_id:
