@@ -20,4 +20,19 @@ import duckdb as dd
 # dd.sql("select questions.question_id, questions.title, from './discussions_to_add.json' as questions where list_contains(questions.tags, 'openshift')").show()
 # dd.sql("select questions.question_id, questions.title, questions.tags from './discussions_to_add.json' as questions order by questions.question_id").show()
 # dd.sql("select tags.name, tags.count, age(to_timestamp(tags.last_activity_date)) from './tags.json' as tags where tags.count < 2 order by tags.last_activity_date desc, tags.count desc").show()
-dd.sql("select question_id, view_count from './questions_answers_comments.json' as questions where view_count >= 100 order by view_count desc").show()
+# dd.sql("select question_id, view_count from './questions_answers_comments.json' as questions where view_count >= 100 order by view_count desc").show()
+# dd.sql("select questions.answers.comments.link, questions.answers.link, questions.answers.share_link, questions.link, questions.share_link from './questions_answers_comments.json' as questions").show()
+# dd.sql("select unnest(questions.comments).link, unnest(questions.answers).share_link, unnest(questions.answers).link, unnest(questions.answers.comments).link, questions.link, questions.share_link from './questions_answers_comments.json' as questions").show()
+
+# This gets all links and share_links from answers, questions and comments and outputs them to a file. User links are ignored
+#dd.sql("Copy (" \
+#"select unnest(answers.comments).link from (select unnest(questions.answers, recursive:=true) from './questions_answers_comments.json' as questions) as answers where answers.question_id " \
+#"UNION select unnest(questions.answers).link from './questions_answers_comments.json' as questions where questions.question_id " \
+#"UNION select unnest(questions.answers).share_link from './questions_answers_comments.json' as questions where questions.question_id " \
+#"UNION select questions.link from './questions_answers_comments.json' as questions where questions.question_id " \
+#"UNION select questions.share_link from './questions_answers_comments.json' as questions where questions.question_id " \
+#"UNION select unnest(questions.comments).link from './questions_answers_comments.json' as questions where questions.question_id " \
+#  ")to 'link_query_output.csv' (HEADER false )")
+
+
+#  ggrep -Pio '"(link|share_link)":\s*"https://stackoverflow.developer.gov.bc.ca/((?!users).*)"'  questions_answers_comments.json | ggrep -Pio 'http.*\d' > links_from_json_file.txt

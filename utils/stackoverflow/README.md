@@ -377,4 +377,81 @@ The script provides detailed feedback including:
 3. Use `--force` only in automated scripts where confirmation isn't possible
 4. Monitor the logs for any failures during bulk operations
 
+## URL Validation with Playwright (validate_urls_playwright.py)
+A browser-based URL validation tool that checks if URLs return HTTP 301 redirects. This script is used for validating redirects to GitHub that require SSO authentication, which cannot be tested programmatically with standard HTTP libraries.
+
+### Requirements
+* Python 3.x
+* Dependencies listed in requirements.txt (includes Playwright)
+* Browser support (Chromium/Chrome will be installed automatically by Playwright)
+
+### Setup
+1. Install the required dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+2. Install Playwright browsers (one-time setup):
+   ```
+   playwright install chromium
+   ```
+
+### Usage
+```
+python validate_urls_playwright.py --file URL_FILE [options]
+```
+
+#### Parameters
+- `--file` (required): Path to file containing URLs to validate (one URL per line)
+- `--org`: GitHub organization name for SSO testing (e.g., bcgov, mycompany)
+- `--delay`: Delay in seconds between requests (default: 1.0)
+
+#### Examples
+
+**Basic URL validation:**
+```bash
+python validate_urls_playwright.py --file sample_urls.txt
+```
+
+**Validate URLs requiring GitHub organization SSO:**
+```bash
+python validate_urls_playwright.py --file sample_urls.txt --org bcgov
+```
+
+**Custom delay between requests:**
+```bash
+python validate_urls_playwright.py --file sample_urls.txt --org mycompany --delay 2.0
+```
+
+### Authentication Workflow
+The script uses a two-step authentication process:
+
+1. **GitHub Login**: Opens a browser window for manual GitHub authentication
+   - Enter username/password
+   - Complete 2FA if required
+   - Wait for confirmation at GitHub homepage
+
+2. **SSO Authentication** (if `--org` specified): Tests organization access
+   - Navigates to the specified GitHub organization
+   - Handles Microsoft SSO redirects automatically
+   - Prompts for manual SSO completion if required
+
+### URL File Format
+Create a text file with one URL per line. Comments (lines starting with #) are ignored:
+Column 1 = URL to redirect
+Column 2 = Expected new url
+```
+# Test URLs for redirects
+https://example.org/old-name,https://another.org/new-name,
+https://example.org/another-rename,https://another.org/another-rename
+https://example.org/something/migrated-project,https://another.org/something/migrated-project2
+```
+
+### Output
+The script provides detailed feedback including:
+- Authentication status and SSO completion
+- Per-URL validation results with redirect chains
+- Summary statistics (total processed, valid 301s, failures)
+- Error messages for failed validations
+
+
 
