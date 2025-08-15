@@ -63,10 +63,11 @@ def normalize_image_urls(text: str) -> str:
     return text
 
 class MigrationValidator:
-    def __init__(self, auth_manager: GitHubAuthManager, owner: str, name: str, category_name: str):
+    def __init__(self, auth_manager: GitHubAuthManager, owner: str, name: str, category_name: str, ignored_tags: List[str] = None):
         self.owner = owner
         self.name = name
         self.category_name = category_name
+        self.ignored_tags = ignored_tags or []
         self.github_graphql = GraphQLHelper(auth_manager)
         self.validation_results = {
             'total_questions': 0,
@@ -74,7 +75,8 @@ class MigrationValidator:
             'missing_questions': [],
             'answer_mismatches': [],
             'comment_mismatches': [],
-            'content_issues': []
+            'content_issues': [],
+            'ignored_questions': []
         }
 
     def get_github_discussions(self) -> List[Dict]:
@@ -323,6 +325,53 @@ class MigrationValidator:
         
         return issues
 
+    def process_question(self, so_question: Dict, gh_discussions_by_title: Dict) -> None:
+        """
+        Process a single SO question and update validation results.
+        
+        Args:
+            so_question: Stack Overflow question data
+            gh_discussions_by_title: Dictionary mapping discussion titles to discussion data
+        """
+        so_title = decode_html_entities(so_question.get('title', f"Question #{so_question.get('question_id', 'Unknown')}"))
+        
+        if so_title in gh_discussions_by_title:
+            self.validation_results['migrated_questions'] += 1
+            gh_discussion = gh_discussions_by_title[so_title]
+            
+            # Validate content
+            content_issues = self.validate_question_content(so_question, gh_discussion)
+            if content_issues:
+                self.validation_results['content_issues'].append({
+                    'id': so_question['question_id'],
+                    'title': so_title,
+                    'issues': content_issues
+                })
+            
+            # Validate answers
+            answer_issues = self.validate_answers(so_question, gh_discussion)
+            if answer_issues:
+                self.validation_results['answer_mismatches'].append({
+                    'id': so_question['question_id'],
+                    'title': so_title,
+                    'issues': answer_issues
+                })
+            
+            # Validate comments
+            comment_issues = self.validate_comments(so_question, gh_discussion)
+            if comment_issues:
+                self.validation_results['comment_mismatches'].append({
+                    'id': so_question['question_id'],
+                    'title': so_title,
+                    'issues': comment_issues
+                })
+        else:
+            # Question not found in GitHub discussions
+            if self.ignored_tags and any(tag in so_question.get('tags', []) for tag in self.ignored_tags):
+                self.validation_results['ignored_questions'].append(f"{so_question['question_id']} - {so_title} (tags: {so_question.get('tags', [])})")
+            else:
+                self.validation_results['missing_questions'].append(f"{so_question['question_id']} - {so_title}")
+
     def validate_migration(self, questions_file: str) -> Dict:
         """Main validation method."""
         logger.info("Starting migration validation...")
@@ -337,55 +386,32 @@ class MigrationValidator:
         
         logger.info(f"Found {len(so_questions)} SO questions and {len(gh_discussions)} GH discussions")
         
-        for i, so_question in enumerate(so_questions):
-            so_title = decode_html_entities(so_question.get('title', f"Question #{i+1}"))
-            
-            if so_title in gh_discussions_by_title:
-                self.validation_results['migrated_questions'] += 1
-                gh_discussion = gh_discussions_by_title[so_title]
-                
-                # Validate content
-                content_issues = self.validate_question_content(so_question, gh_discussion)
-                if content_issues:
-                    self.validation_results['content_issues'].append({
-                        'id': so_question['question_id'],
-                        'title': so_title,
-                        'issues': content_issues
-                    })
-                
-                # Validate answers
-                answer_issues = self.validate_answers(so_question, gh_discussion)
-                if answer_issues:
-                    self.validation_results['answer_mismatches'].append({
-                        'id': so_question['question_id'],
-                        'title': so_title,
-                        'issues': answer_issues
-                    })
-                
-                # Validate comments
-                comment_issues = self.validate_comments(so_question, gh_discussion)
-                if comment_issues:
-                    self.validation_results['comment_mismatches'].append({
-                        'id': so_question['question_id'],
-                        'title': so_title,
-                        'issues': comment_issues
-                    })
-            else:
-                self.validation_results['missing_questions'].append(f"{so_question['question_id']} - {so_title}")
+        for so_question in so_questions:
+            self.process_question(so_question, gh_discussions_by_title)
+
+
+    def calculate_success_rate(self) -> float:
+        results = self.validation_results
+        if results['total_questions'] == 0:
+            return 0.0
         
-        return self.validation_results
+        successful_questions = results['migrated_questions'] + len(results['ignored_questions'])
+        return (successful_questions / results['total_questions']) * 100
 
     def generate_report(self) -> str:
         """Generate a validation report."""
         results = self.validation_results
-        success_rate = (results['migrated_questions'] / results['total_questions']) * 100 if results['total_questions'] > 0 else 0
-        
+        success_rate = self.calculate_success_rate()
+
         report = f"""
 # Migration Validation Report
 
+Success rate is determined by the formula: (migrated questions + ignored questions) / total questions * 100
+
 ## Summary
 - Total SO Questions: {results['total_questions']}
-- Successfully Migrated: {results['migrated_questions']}
+- Total Migrated Questions: {results['migrated_questions']}
+- Ignored Questions: {len(results['ignored_questions'])}
 - Success Rate: {success_rate:.1f}%
 - Missing Questions: {len(results['missing_questions'])}
 - Content Issues: {len(results['content_issues'])}
@@ -418,6 +444,12 @@ class MigrationValidator:
                 for problem in issue['issues']:
                     report += f"- {problem}\n"
 
+        if results['ignored_questions']:
+            report += "\n## Ignored Questions\n"
+            report += "### These questions were not migrated because they had ignored tag(s):\n"
+            for question in results['ignored_questions']:
+                report += f"- {question}\n"
+
         # Add section for unique IDs with issues
         unique_ids = set()
         for issue in results['answer_mismatches']:
@@ -441,7 +473,11 @@ def main():
                         help='Path to questions JSON file')
     parser.add_argument('--output', default='validation_report.md',
                         help='Output file for validation report')
-    
+    parser.add_argument('--ignore-tags', 
+                     type=str, 
+                     nargs='+',
+                     help='List of tags that were ignored in the migration process (space-separated). Questions that were tagged with these tag(s) were not migrated.')
+
     args = parser.parse_args()
     
     # Parse repository
@@ -455,10 +491,10 @@ def main():
     github_auth_manager.initialize()
     
     # Create validator
-    validator = MigrationValidator(github_auth_manager, owner, name, args.category)
-    
+    validator = MigrationValidator(github_auth_manager, owner, name, args.category, args.ignore_tags)
+
     # Run validation
-    results = validator.validate_migration(args.questions_file)
+    validator.validate_migration(args.questions_file)
     
     # Generate and save report
     report = validator.generate_report()
@@ -466,7 +502,6 @@ def main():
         f.write(report)
     
     logger.info(f"Validation complete. Report saved to {args.output}")
-    logger.info(f"Success rate: {(results['migrated_questions'] / results['total_questions'] * 100):.1f}%")
 
 if __name__ == '__main__':
     main()

@@ -861,5 +861,281 @@ class TestMigrationValidator(unittest.TestCase):
         self.assertEqual(len(issues), 0)  # 2 question + 2 answer comments = 4 total
 
 
+class TestIgnoredTagsFunctionality(unittest.TestCase):
+    """Unit tests for the ignored tags functionality."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.mock_auth_manager = Mock(spec=GitHubAuthManager)
+        self.mock_auth_manager.get_token.return_value = "test_token"
+        self.mock_auth_manager.is_initialized = True
+
+    def test_process_question_with_ignored_tag_single(self):
+        """Test that questions with a single ignored tag are categorized correctly."""
+        validator = MigrationValidator(
+            auth_manager=self.mock_auth_manager,
+            owner="test_owner", 
+            name="test_repo",
+            category_name="Q&A",
+            ignored_tags=["deprecated"]
+        )
+        
+        so_question = {
+            "question_id": 123,
+            "title": "Old deprecated feature help",
+            "tags": ["deprecated", "old-feature"]
+        }
+        
+        gh_discussions_by_title = {}  # Question not migrated
+        
+        validator.process_question(so_question, gh_discussions_by_title)
+        
+        # Check that question is in ignored list, not missing list
+        self.assertEqual(len(validator.validation_results['ignored_questions']), 1)
+        self.assertEqual(len(validator.validation_results['missing_questions']), 0)
+        self.assertIn("123 - Old deprecated feature help", validator.validation_results['ignored_questions'][0])
+        self.assertIn("deprecated", validator.validation_results['ignored_questions'][0])
+
+    def test_process_question_with_ignored_tag_multiple(self):
+        """Test that questions with multiple ignored tags are categorized correctly."""
+        validator = MigrationValidator(
+            auth_manager=self.mock_auth_manager,
+            owner="test_owner", 
+            name="test_repo",
+            category_name="Q&A",
+            ignored_tags=["deprecated", "obsolete", "archived"]
+        )
+        
+        so_question = {
+            "question_id": 456,
+            "title": "Help with archived system",
+            "tags": ["archived", "legacy", "systems"]
+        }
+        
+        gh_discussions_by_title = {}  # Question not migrated
+        
+        validator.process_question(so_question, gh_discussions_by_title)
+        
+        self.assertEqual(len(validator.validation_results['ignored_questions']), 1)
+        self.assertEqual(len(validator.validation_results['missing_questions']), 0)
+        self.assertIn("456 - Help with archived system", validator.validation_results['ignored_questions'][0])
+
+    def test_process_question_without_ignored_tags(self):
+        """Test that questions without ignored tags go to missing list when not found."""
+        validator = MigrationValidator(
+            auth_manager=self.mock_auth_manager,
+            owner="test_owner", 
+            name="test_repo",
+            category_name="Q&A",
+            ignored_tags=["deprecated"]
+        )
+        
+        so_question = {
+            "question_id": 789,
+            "title": "Current feature help",
+            "tags": ["current", "active-feature"]
+        }
+        
+        gh_discussions_by_title = {}  # Question not migrated
+        
+        validator.process_question(so_question, gh_discussions_by_title)
+        
+        # Check that question is in missing list, not ignored list
+        self.assertEqual(len(validator.validation_results['ignored_questions']), 0)
+        self.assertEqual(len(validator.validation_results['missing_questions']), 1)
+        self.assertIn("789 - Current feature help", validator.validation_results['missing_questions'][0])
+
+    def test_process_question_no_ignored_tags_configured(self):
+        """Test behavior when no ignored tags are configured."""
+        validator = MigrationValidator(
+            auth_manager=self.mock_auth_manager,
+            owner="test_owner", 
+            name="test_repo",
+            category_name="Q&A",
+            ignored_tags=None  # No ignored tags
+        )
+        
+        so_question = {
+            "question_id": 111,
+            "title": "Any question",
+            "tags": ["any", "tags"]
+        }
+        
+        gh_discussions_by_title = {}
+        
+        validator.process_question(so_question, gh_discussions_by_title)
+        
+        # Should go to missing since no ignored tags configured
+        self.assertEqual(len(validator.validation_results['ignored_questions']), 0)
+        self.assertEqual(len(validator.validation_results['missing_questions']), 1)
+
+    def test_process_question_empty_ignored_tags_list(self):
+        """Test behavior when ignored tags list is empty."""
+        validator = MigrationValidator(
+            auth_manager=self.mock_auth_manager,
+            owner="test_owner", 
+            name="test_repo",
+            category_name="Q&A",
+            ignored_tags=[]  # Empty list
+        )
+        
+        so_question = {
+            "question_id": 222,
+            "title": "Another question",
+            "tags": ["some", "tags"]
+        }
+        
+        gh_discussions_by_title = {}
+        
+        validator.process_question(so_question, gh_discussions_by_title)
+        
+        # Should go to missing since ignored tags list is empty
+        self.assertEqual(len(validator.validation_results['ignored_questions']), 0)
+        self.assertEqual(len(validator.validation_results['missing_questions']), 1)
+
+    def test_process_question_found_in_discussions_ignores_tags(self):
+        """Test that found questions are processed normally regardless of ignored tags."""
+        validator = MigrationValidator(
+            auth_manager=self.mock_auth_manager,
+            owner="test_owner", 
+            name="test_repo",
+            category_name="Q&A",
+            ignored_tags=["legacy"]
+        )
+        
+        so_question = {
+            "question_id": 333,
+            "title": "Found question with legacy tag",
+            "body": "This question was migrated",
+            "tags": ["legacy", "migrated"]
+        }
+
+        gh_discussion = {
+            "title": "Found question with legacy tag",
+            "body": "This question was migrated",
+            "labels": {"nodes": [{"name": "legacy"}, {"name": "migrated"}]},
+            "comments": {
+                "nodes": [
+                    {
+                        "body": "> [!NOTE]\n> Originally answered by user1 on 2024-01-15\n\nTry this solution",
+                        "isAnswer": True
+                    }
+                ]
+            }
+        }
+        
+        gh_discussions_by_title = {"Found question with legacy tag": gh_discussion}
+        
+        validator.process_question(so_question, gh_discussions_by_title)
+        
+        # Should be processed as migrated, not ignored
+        self.assertEqual(validator.validation_results['migrated_questions'], 1)
+        self.assertEqual(len(validator.validation_results['ignored_questions']), 0)
+        self.assertEqual(len(validator.validation_results['missing_questions']), 0)
+
+    @patch('validate_migration.load_json')
+    def test_validate_migration_with_ignored_tags_integration(self, mock_load_json):
+        """Integration test for the full validate_migration method with ignored tags."""
+        validator = MigrationValidator(
+            auth_manager=self.mock_auth_manager,
+            owner="test_owner", 
+            name="test_repo",
+            category_name="Q&A",
+            ignored_tags=["deprecated", "legacy"]
+        )
+        
+        # Mock the SO questions data
+        mock_so_questions = [
+            {
+                "question_id": 1,
+                "title": "Current Question",
+                "tags": ["current", "active"]
+            },
+            {
+                "question_id": 2,
+                "title": "Legacy Question",
+                "tags": ["legacy", "old"]
+            },
+            {
+                "question_id": 3,
+                "title": "Deprecated Feature",
+                "tags": ["deprecated"]
+            },
+            {
+                "question_id": 4,
+                "title": "Mixed Tags Question",
+                "tags": ["current", "deprecated"]
+            }
+        ]
+        mock_load_json.return_value = mock_so_questions
+        
+        # Mock get_github_discussions to return empty (none migrated)
+        validator.get_github_discussions = Mock(return_value=[])
+        
+        results = validator.validate_migration("dummy_file.json")
+        
+        # Check results
+        self.assertEqual(results['total_questions'], 4)
+        self.assertEqual(results['migrated_questions'], 0)
+        self.assertEqual(len(results['missing_questions']), 1)  # Only "Current Question"
+        self.assertEqual(len(results['ignored_questions']), 3)  # Legacy, Deprecated, and Mixed
+        
+        # Verify specific questions
+        self.assertIn("1 - Current Question", results['missing_questions'][0])
+        
+        ignored_ids = [entry.split(' - ')[0] for entry in results['ignored_questions']]
+        self.assertIn("2", ignored_ids)  # Legacy Question
+        self.assertIn("3", ignored_ids)  # Deprecated Feature  
+        self.assertIn("4", ignored_ids)  # Mixed Tags Question
+
+    def test_process_question_question_without_tags(self):
+        """Test behavior when SO question has no tags."""
+        validator = MigrationValidator(
+            auth_manager=self.mock_auth_manager,
+            owner="test_owner", 
+            name="test_repo",
+            category_name="Q&A",
+            ignored_tags=["deprecated"]
+        )
+        
+        so_question = {
+            "question_id": 444,
+            "title": "Question without tags"
+            # No tags field
+        }
+        
+        gh_discussions_by_title = {}
+        
+        validator.process_question(so_question, gh_discussions_by_title)
+        
+        # Should go to missing since no tags to check against ignored list
+        self.assertEqual(len(validator.validation_results['ignored_questions']), 0)
+        self.assertEqual(len(validator.validation_results['missing_questions']), 1)
+
+    def test_process_question_empty_tags_list(self):
+        """Test behavior when SO question has empty tags list."""
+        validator = MigrationValidator(
+            auth_manager=self.mock_auth_manager,
+            owner="test_owner", 
+            name="test_repo",
+            category_name="Q&A",
+            ignored_tags=["deprecated"]
+        )
+        
+        so_question = {
+            "question_id": 555,
+            "title": "Question with empty tags",
+            "tags": []  # Empty tags list
+        }
+        
+        gh_discussions_by_title = {}
+        
+        validator.process_question(so_question, gh_discussions_by_title)
+        
+        # Should go to missing since no tags to match
+        self.assertEqual(len(validator.validation_results['ignored_questions']), 0)
+        self.assertEqual(len(validator.validation_results['missing_questions']), 1)
+
+
 if __name__ == '__main__':
     unittest.main()
