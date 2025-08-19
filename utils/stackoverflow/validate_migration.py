@@ -526,7 +526,8 @@ def main():
     parser.add_argument('--popular-tag-min-threshold',
                         required=True,
                         type=int,
-                         help='The value used in the migration process to determine popular tags.')
+                        type=int,
+                        help='The value used in the migration process to determine popular tags.')
 
     args = parser.parse_args()
 
