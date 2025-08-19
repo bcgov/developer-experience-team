@@ -421,7 +421,7 @@ class MigrationValidator:
 
         return self.validation_results
 
-
+        return self.validation_results
     def calculate_success_rate(self) -> float:
         results = self.validation_results
         if results['total_questions'] == 0:
