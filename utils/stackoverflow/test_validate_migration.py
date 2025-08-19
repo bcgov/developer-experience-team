@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import Mock, patch
 from validate_migration import MigrationValidator, extract_image_filenames, normalize_image_urls
 from populate_discussion_helpers import GitHubAuthManager
-
+from populate_discussion import POPULAR_TAG_NAME
 
 class TestImageHandling(unittest.TestCase):
     """Unit tests for image handling functions."""
@@ -952,7 +952,6 @@ class TestIgnoredTagsFunctionality(unittest.TestCase):
             owner="test_owner", 
             name="test_repo",
             category_name="Q&A",
-            ignored_tags=None  # No ignored tags
         )
         
         so_question = {
@@ -1043,6 +1042,8 @@ class TestIgnoredTagsFunctionality(unittest.TestCase):
             category_name="Q&A",
             ignored_tags=["deprecated", "legacy"]
         )
+
+        validator.get_popular_so_questions_sql = Mock(return_value=[])
         
         # Mock the SO questions data
         mock_so_questions = [
@@ -1136,6 +1137,275 @@ class TestIgnoredTagsFunctionality(unittest.TestCase):
         self.assertEqual(len(validator.validation_results['ignored_questions']), 0)
         self.assertEqual(len(validator.validation_results['missing_questions']), 1)
 
+class TestPopularTagFunctionality(unittest.TestCase):
+    """Unit tests for the popular tag functionality."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.mock_auth_manager = Mock(spec=GitHubAuthManager)
+        self.mock_auth_manager.get_token.return_value = "test_token"
+        self.mock_auth_manager.is_initialized = True
+        
+        self.validator = MigrationValidator(
+            auth_manager=self.mock_auth_manager,
+            owner="test_owner", 
+            name="test_repo",
+            category_name="Q&A",
+            popular_tag_min_threshold=300
+        )
+
+    def test_get_popular_so_questions_basic(self):
+        """Test getting popular SO questions with basic functionality."""
+        # Mock the SQL method to return a list of titles
+        self.validator.get_popular_so_questions_sql = Mock(return_value=[
+            "How to configure VPN?",
+            "OpenShift setup guide", 
+            "Database connection issues"
+        ])
+        
+        result = self.validator.get_popular_so_questions("test_file.json")
+        
+        expected = {
+            "How to configure VPN?",
+            "OpenShift setup guide", 
+            "Database connection issues"
+        }
+        self.assertEqual(result, expected)
+        
+        # Verify SQL method was called with correct file
+        self.validator.get_popular_so_questions_sql.assert_called_once_with("test_file.json")
+
+    def test_get_popular_so_questions_with_html_entities(self):
+        """Test getting popular SO questions with HTML entity decoding."""
+        # Mock the SQL method to return titles with HTML entities
+        self.validator.get_popular_so_questions_sql = Mock(return_value=[
+            "How to use &quot;quotes&quot; in config?",
+            "Setup &amp; configuration guide"
+        ])
+        
+        result = self.validator.get_popular_so_questions("test_file.json")
+        
+        expected = {
+            'How to use "quotes" in config?',
+            "Setup & configuration guide"
+        }
+        self.assertEqual(result, expected)
+
+    def test_get_popular_so_questions_empty_result(self):
+        """Test getting popular SO questions when no questions meet threshold."""
+        # Mock the SQL method to return empty list
+        self.validator.get_popular_so_questions_sql = Mock(return_value=[])
+        
+        result = self.validator.get_popular_so_questions("test_file.json")
+        
+        self.assertEqual(result, set())
+
+
+    def test_validate_popular_tags_perfect_match(self):
+        """Test validation when popular tags match perfectly between SO and GH."""
+        # Set up SO popular questions
+        self.validator.get_popular_so_questions = Mock(return_value={
+            "Popular Question 1",
+            "Popular Question 2",
+            "Popular Question 3"
+        })
+        
+        # Set up GH popular questions (questions with popular tag)
+        self.validator.popular_gh_questions = {
+            "Popular Question 1",
+            "Popular Question 2", 
+            "Popular Question 3"
+        }
+        
+        self.validator.validate_popular_tags("test_file.json")
+        
+        # Should have no issues when they match perfectly
+        self.assertEqual(
+            self.validator.validation_results['popular_question_issues']['missing_popular_tag'], 
+            []
+        )
+        self.assertEqual(
+            self.validator.validation_results['popular_question_issues']['tagged_as_popular_but_are_not'], 
+            []
+        )
+
+    def test_validate_popular_tags_missing_popular_tag(self):
+        """Test validation when SO questions should be popular but aren't tagged in GH."""
+        # SO has popular questions
+        self.validator.get_popular_so_questions = Mock(return_value={
+            "Should be popular 1",
+            "Should be popular 2",
+            "Already tagged popular"
+        })
+        
+        # GH only has one of them tagged as popular
+        self.validator.popular_gh_questions = {
+            "Already tagged popular"
+        }
+        
+        self.validator.validate_popular_tags("test_file.json")
+        
+        # Should identify missing popular tags
+        missing = self.validator.validation_results['popular_question_issues']['missing_popular_tag']
+        self.assertEqual(missing, {"Should be popular 1", "Should be popular 2"})
+        
+        # Should have no false positives
+        self.assertEqual(
+            self.validator.validation_results['popular_question_issues']['tagged_as_popular_but_are_not'], 
+            []
+        )
+
+    def test_validate_popular_tags_tagged_as_popular_but_are_not(self):
+        """Test validation when GH questions are tagged popular but don't meet SO threshold."""
+        # SO has no popular questions (or different ones)
+        self.validator.get_popular_so_questions = Mock(return_value={
+            "Actually popular question"
+        })
+        
+        # GH has questions incorrectly tagged as popular
+        self.validator.popular_gh_questions = {
+            "Actually popular question",
+            "Incorrectly tagged as popular 1",
+            "Incorrectly tagged as popular 2"
+        }
+        
+        self.validator.validate_popular_tags("test_file.json")
+        
+        # Should have no missing popular tags
+        self.assertEqual(
+            self.validator.validation_results['popular_question_issues']['missing_popular_tag'], 
+            []
+        )
+        
+        # Should identify incorrectly tagged questions
+        incorrect = self.validator.validation_results['popular_question_issues']['tagged_as_popular_but_are_not']
+        self.assertEqual(incorrect, {"Incorrectly tagged as popular 1", "Incorrectly tagged as popular 2"})
+
+    def test_validate_popular_tags_mixed_issues(self):
+        """Test validation when there are both missing and incorrectly tagged questions."""
+        # SO popular questions
+        self.validator.get_popular_so_questions = Mock(return_value={
+            "Should be popular but isn't tagged",
+            "Correctly tagged popular",
+            "Another missing popular"
+        })
+        
+        # GH popular questions (mix of correct and incorrect)
+        self.validator.popular_gh_questions = {
+            "Correctly tagged popular",
+            "Incorrectly tagged as popular",
+            "Another incorrect popular"
+        }
+        
+        self.validator.validate_popular_tags("test_file.json")
+        
+        # Should identify missing popular tags
+        missing = self.validator.validation_results['popular_question_issues']['missing_popular_tag']
+        self.assertEqual(missing, {"Should be popular but isn't tagged", "Another missing popular"})
+        
+        # Should identify incorrectly tagged questions
+        incorrect = self.validator.validation_results['popular_question_issues']['tagged_as_popular_but_are_not']
+        self.assertEqual(incorrect, {"Incorrectly tagged as popular", "Another incorrect popular"})
+
+    def test_validate_popular_tags_no_popular_questions(self):
+        """Test validation when there are no popular questions in either system."""
+        # No popular questions in SO
+        self.validator.get_popular_so_questions = Mock(return_value=set())
+        
+        # No popular questions in GH
+        self.validator.popular_gh_questions = set()
+        
+        self.validator.validate_popular_tags("test_file.json")
+        
+        # Should have no issues
+        self.assertEqual(
+            self.validator.validation_results['popular_question_issues']['missing_popular_tag'], 
+            []
+        )
+        self.assertEqual(
+            self.validator.validation_results['popular_question_issues']['tagged_as_popular_but_are_not'], 
+            []
+        )
+
+    def test_popular_gh_questions_tracking(self):
+        """Test that popular_gh_questions set is populated during question validation."""
+        so_question = {
+            "title": "Test Question",
+            "body": "Test body",
+            "tags": ["test"]
+        }
+        
+        # GH discussion with popular tag
+        gh_discussion = {
+            "title": "Test Question",
+            "body": "Test body",
+            "labels": {
+                "nodes": [
+                    {"name": "test"},
+                    {"name": POPULAR_TAG_NAME}  # This should be tracked
+                ]
+            }
+        }
+        
+        # Initially empty
+        self.assertEqual(len(self.validator.popular_gh_questions), 0)
+        
+        # Validate question content (this should populate popular_gh_questions)
+        self.validator.validate_question_content(so_question, gh_discussion)
+        
+        # Should now contain the question title
+        self.assertEqual(self.validator.popular_gh_questions, {"Test Question"})
+
+    def test_popular_gh_questions_not_tracked_without_tag(self):
+        """Test that questions without popular tag are not tracked."""
+        so_question = {
+            "title": "Regular Question",
+            "body": "Test body", 
+            "tags": ["test"]
+        }
+        
+        # GH discussion without popular tag
+        gh_discussion = {
+            "title": "Regular Question",
+            "body": "Test body",
+            "labels": {
+                "nodes": [
+                    {"name": "test"}
+                    # No popular tag
+                ]
+            }
+        }
+        
+        # Validate question content
+        self.validator.validate_question_content(so_question, gh_discussion)
+        
+        # Should remain empty since no popular tag
+        self.assertEqual(len(self.validator.popular_gh_questions), 0)
+
+   
+
+    def test_popular_tag_min_threshold_initialization(self):
+        """Test that popular_tag_min_threshold is properly initialized."""
+        # Test default value
+        default_validator = MigrationValidator(
+            auth_manager=self.mock_auth_manager,
+            owner="test_owner", 
+            name="test_repo",
+            category_name="Q&A"
+        )
+        self.assertEqual(default_validator.popular_tag_min_threshold, 200)
+        
+        # Test custom value
+        custom_validator = MigrationValidator(
+            auth_manager=self.mock_auth_manager,
+            owner="test_owner", 
+            name="test_repo",
+            category_name="Q&A",
+            popular_tag_min_threshold=500
+        )
+        self.assertEqual(custom_validator.popular_tag_min_threshold, 500)
+
+    
 
 if __name__ == '__main__':
     unittest.main()
