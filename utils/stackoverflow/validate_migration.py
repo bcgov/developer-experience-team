@@ -525,7 +525,7 @@ def main():
                      help='List of tags that were ignored in the migration process (space-separated). Questions that were tagged with these tag(s) were not migrated.')
     parser.add_argument('--popular-tag-min-threshold',
                         required=True,
-                         type=int,
+                        type=int,
                          help='The value used in the migration process to determine popular tags.')
 
     args = parser.parse_args()
