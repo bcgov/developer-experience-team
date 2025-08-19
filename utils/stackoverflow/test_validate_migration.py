@@ -952,6 +952,7 @@ class TestIgnoredTagsFunctionality(unittest.TestCase):
             owner="test_owner", 
             name="test_repo",
             category_name="Q&A",
+            ignored_tags=None  # No ignored tags
         )
         
         so_question = {

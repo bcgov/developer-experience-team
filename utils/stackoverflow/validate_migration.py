@@ -3,7 +3,7 @@ import os
 import logging
 import argparse
 import re
-from typing import Dict, List
+from typing import Dict, List, Optional
 from populate_discussion_helpers import GitHubAuthManager, GraphQLHelper
 from populate_discussion import (
     load_json, decode_html_entities, get_category_id, POPULAR_TAG_NAME
@@ -64,7 +64,7 @@ def normalize_image_urls(text: str) -> str:
     return text
 
 class MigrationValidator:
-    def __init__(self, auth_manager: GitHubAuthManager, owner: str, name: str, category_name: str, ignored_tags: List[str] = [], popular_tag_min_threshold: int = 200):
+    def __init__(self, auth_manager: GitHubAuthManager, owner: str, name: str, category_name: str, ignored_tags: Optional[List[str]] = None, popular_tag_min_threshold: int = 200):
         self.owner = owner
         self.name = name
         self.category_name = category_name
