@@ -566,7 +566,8 @@ def get_author_with_github_user(owner_data: Dict[str, Any], id_mapping: Optional
     user_id = str(owner_data.get('user_id', ''))
     if user_id and user_id in id_mapping:
         github_username = id_mapping[user_id]
-        return f"{display_name} ({github_username})"
+        github_link = f"[{github_username}](https://github.com/{github_username})"
+        return f"{display_name} ({github_link})"
     else:
         # Log when user can't be found in mapping
         if user_id:
