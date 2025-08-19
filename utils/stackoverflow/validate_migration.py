@@ -504,7 +504,7 @@ Success rate is determined by the formula: (migrated questions + ignored questio
             ]
             
             for section_title, titles in sections:
-                if titles: 
+                if titles:
                     report += f"{section_title}:\n"
                     for title in titles:
                         report += f"- {title}\n"
