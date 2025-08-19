@@ -20,6 +20,8 @@ logger = logging.getLogger(__name__)
 # Get URL mapping logger (but don't configure it unless we're the main script)
 url_mapping_logger = logging.getLogger('url_mapping')
 
+POPULAR_TAG_NAME = "popular-in-so"
+
 Category = namedtuple('Category', ['id', 'name'])
 class MetaAction(StrEnum):
     ANSWERED = "answered"
@@ -673,7 +675,7 @@ def main():
 
     SO_LINK = "link"
     SO_SHARE_LINK = "share_link"
-    POPULAR_TAG_NAME = "popular-in-so"
+
 
     # Initialize GitHub authentication
     github_auth_manager = GitHubAuthManager()

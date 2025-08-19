@@ -3,11 +3,12 @@ import os
 import logging
 import argparse
 import re
-from typing import Dict, List
+from typing import Dict, List, Optional
 from populate_discussion_helpers import GitHubAuthManager, GraphQLHelper
 from populate_discussion import (
-    load_json, decode_html_entities, get_category_id
+    load_json, decode_html_entities, get_category_id, POPULAR_TAG_NAME
 )
+import duckdb as dd
 
 # Configure logging only if no handlers are already set up
 if not logging.getLogger().handlers:
@@ -63,12 +64,14 @@ def normalize_image_urls(text: str) -> str:
     return text
 
 class MigrationValidator:
-    def __init__(self, auth_manager: GitHubAuthManager, owner: str, name: str, category_name: str, ignored_tags: List[str] = None):
+    def __init__(self, auth_manager: GitHubAuthManager, owner: str, name: str, category_name: str, ignored_tags: Optional[List[str]] = None, popular_tag_min_threshold: int = 200):
         self.owner = owner
         self.name = name
         self.category_name = category_name
         self.ignored_tags = ignored_tags or []
+        self.popular_tag_min_threshold = popular_tag_min_threshold
         self.github_graphql = GraphQLHelper(auth_manager)
+        self.popular_gh_questions = set()
         self.validation_results = {
             'total_questions': 0,
             'migrated_questions': 0,
@@ -76,7 +79,12 @@ class MigrationValidator:
             'answer_mismatches': [],
             'comment_mismatches': [],
             'content_issues': [],
-            'ignored_questions': []
+            'ignored_questions': [],
+            'popular_question_issues': {
+                'tagged_as_popular_but_are_not': [],
+                'missing_popular_tag': []
+            }
+
         }
 
     def get_github_discussions(self) -> List[Dict]:
@@ -200,6 +208,8 @@ class MigrationValidator:
         if missing_tags:
             issues.append(f"Missing tags: {missing_tags}")
         
+        if POPULAR_TAG_NAME in gh_labels:
+            self.popular_gh_questions.add(gh_title)
         return issues
 
     def validate_answers(self, so_question: Dict, gh_discussion: Dict) -> List[str]:
@@ -372,6 +382,24 @@ class MigrationValidator:
             else:
                 self.validation_results['missing_questions'].append(f"{so_question['question_id']} - {so_title}")
 
+    def get_popular_so_questions_sql(self, questions_file: str) -> List:
+        return  dd.sql(f"select title from '{questions_file}' as questions where view_count >= {self.popular_tag_min_threshold}").df()['title'].tolist()
+    
+    def get_popular_so_questions(self, questions_file: str) -> set:
+        results = self.get_popular_so_questions_sql(questions_file)
+        return set(map(decode_html_entities, results))
+
+    def validate_popular_tags(self, questions_file: str) -> None:
+        """Validate popular tags in the questions file."""
+        logger.info("Validating popular tags...")
+        popular_so_questions = self.get_popular_so_questions(questions_file)
+        missing_popular_tag = popular_so_questions - self.popular_gh_questions
+        tagged_as_popular_but_are_not = self.popular_gh_questions - popular_so_questions
+        if missing_popular_tag:
+            self.validation_results['popular_question_issues']['missing_popular_tag'] = missing_popular_tag
+        if tagged_as_popular_but_are_not:
+            self.validation_results['popular_question_issues']['tagged_as_popular_but_are_not'] = tagged_as_popular_but_are_not
+
     def validate_migration(self, questions_file: str) -> Dict:
         """Main validation method."""
         logger.info("Starting migration validation...")
@@ -389,6 +417,8 @@ class MigrationValidator:
         for so_question in so_questions:
             self.process_question(so_question, gh_discussions_by_title)
 
+        self.validate_popular_tags(questions_file)
+        return self.validation_results
 
     def calculate_success_rate(self) -> float:
         results = self.validation_results
@@ -417,9 +447,10 @@ Success rate is determined by the formula: (migrated questions + ignored questio
 - Content Issues: {len(results['content_issues'])}
 - Answer Mismatches: {len(results['answer_mismatches'])}
 - Comment Mismatches: {len(results['comment_mismatches'])}
-
-## Missing Questions
+- Popular Question Issues: {len(results['popular_question_issues'].get('missing_popular_tag', [])) + len(results['popular_question_issues'].get('tagged_as_popular_but_are_not', []))}
 """
+        if results['missing_questions']:
+            report += "\n## Missing Questions\n"
         for title in results['missing_questions']:
             report += f"- {title}\n"
 
@@ -463,6 +494,19 @@ Success rate is determined by the formula: (migrated questions + ignored questio
             for question_id in sorted(unique_ids):
                 report += f"- {question_id}\n"
 
+        if results['popular_question_issues'].get('missing_popular_tag') or results['popular_question_issues'].get('tagged_as_popular_but_are_not'):
+            report += "\n## Popular Question Issues\n"
+            sections = [
+                ("Missing Popular Tag", results['popular_question_issues'].get('missing_popular_tag')),
+                ("Tagged as Popular but are not", results['popular_question_issues'].get('tagged_as_popular_but_are_not'))
+            ]
+            
+            for section_title, titles in sections:
+                if titles:
+                    report += f"{section_title}:\n"
+                    for title in titles:
+                        report += f"- {title}\n"
+
         return report
 
 def main():
@@ -477,9 +521,16 @@ def main():
                      type=str, 
                      nargs='+',
                      help='List of tags that were ignored in the migration process (space-separated). Questions that were tagged with these tag(s) were not migrated.')
+    parser.add_argument('--popular-tag-min-threshold',
+                        required=True,
+                        type=int,
+                        help='The value used in the migration process to determine popular tags.')
 
     args = parser.parse_args()
-    
+
+    if args.popular_tag_min_threshold < 0:
+        raise ValueError("Popular tag minimum threshold must be a non-negative integer.")
+
     # Parse repository
     repo_parts = args.repo.split('/')
     if len(repo_parts) != 2:
@@ -491,7 +542,7 @@ def main():
     github_auth_manager.initialize()
     
     # Create validator
-    validator = MigrationValidator(github_auth_manager, owner, name, args.category, args.ignore_tags)
+    validator = MigrationValidator(github_auth_manager, owner, name, args.category, args.ignore_tags, args.popular_tag_min_threshold)
 
     # Run validation
     validator.validate_migration(args.questions_file)
