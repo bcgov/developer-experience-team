@@ -6,7 +6,7 @@ import re
 from typing import Dict, List, Optional
 from populate_discussion_helpers import GitHubAuthManager, GraphQLHelper
 from populate_discussion import (
-    load_json, decode_html_entities, get_category_id, POPULAR_TAG_NAME
+    load_json, decode_html_entities, get_category_id, POPULAR_TAG_NAME, get_tags_under_threshold
 )
 import duckdb as dd
 
@@ -64,12 +64,13 @@ def normalize_image_urls(text: str) -> str:
     return text
 
 class MigrationValidator:
-    def __init__(self, auth_manager: GitHubAuthManager, owner: str, name: str, category_name: str, ignored_tags: Optional[List[str]] = None, popular_tag_min_threshold: int = 200):
+    def __init__(self, auth_manager: GitHubAuthManager, owner: str, name: str, category_name: str, ignored_tags: Optional[List[str]] = None, popular_tag_min_threshold: int = 200, tag_min_threshold: int = 1):
         self.owner = owner
         self.name = name
         self.category_name = category_name
         self.ignored_tags = ignored_tags or []
         self.popular_tag_min_threshold = popular_tag_min_threshold
+        self.tag_min_threshold = tag_min_threshold
         self.github_graphql = GraphQLHelper(auth_manager)
         self.popular_gh_questions = set()
         self.validation_results = {
@@ -157,7 +158,7 @@ class MigrationValidator:
         
         return discussions
 
-    def validate_question_content(self, so_question: Dict, gh_discussion: Dict) -> List[str]:
+    def validate_question_content(self, so_question: Dict, gh_discussion: Dict, tags_under_min_threshold: Optional[List[str]] = None) -> List[str]:
         """Validate that question content was transferred correctly."""
         issues = []
         
@@ -203,6 +204,8 @@ class MigrationValidator:
         
         # Check tags/labels
         so_tags = set(so_question.get('tags', []))
+        if tags_under_min_threshold:
+           so_tags = so_tags - set(tags_under_min_threshold) 
         gh_labels = set(label['name'] for label in gh_discussion['labels']['nodes'])
         missing_tags = so_tags - gh_labels
         if missing_tags:
@@ -335,7 +338,7 @@ class MigrationValidator:
         
         return issues
 
-    def process_question(self, so_question: Dict, gh_discussions_by_title: Dict) -> None:
+    def process_question(self, so_question: Dict, gh_discussions_by_title: Dict, tags_under_min_threshold: Optional[List[str]] = None) -> None:
         """
         Process a single SO question and update validation results.
         
@@ -350,7 +353,7 @@ class MigrationValidator:
             gh_discussion = gh_discussions_by_title[so_title]
             
             # Validate content
-            content_issues = self.validate_question_content(so_question, gh_discussion)
+            content_issues = self.validate_question_content(so_question, gh_discussion, tags_under_min_threshold)
             if content_issues:
                 self.validation_results['content_issues'].append({
                     'id': so_question['question_id'],
@@ -400,49 +403,45 @@ class MigrationValidator:
         if tagged_as_popular_but_are_not:
             self.validation_results['popular_question_issues']['tagged_as_popular_but_are_not'] = tagged_as_popular_but_are_not
 
-    def validate_migration(self, questions_file: str) -> Dict:
+    def validate_migration(self, questions_file: str, tags_file: str) -> Dict:
         """Main validation method."""
         logger.info("Starting migration validation...")
         
         # Load Stack Overflow data
         so_questions = load_json(questions_file)
+        tags = load_json(tags_file)
         self.validation_results['total_questions'] = len(so_questions)
         
         # Get GitHub discussions
         gh_discussions = self.get_github_discussions()
         gh_discussions_by_title = {d['title']: d for d in gh_discussions}
-        
+
+        # Get tags that were omitted because of low usage
+        tags_under_min_threshold = get_tags_under_threshold(self.tag_min_threshold, tags)
+
         logger.info(f"Found {len(so_questions)} SO questions and {len(gh_discussions)} GH discussions")
-        
+
+        logger.info("Starting question verification...")
         for so_question in so_questions:
-            self.process_question(so_question, gh_discussions_by_title)
+            self.process_question(so_question, gh_discussions_by_title, tags_under_min_threshold)
 
         self.validate_popular_tags(questions_file)
         return self.validation_results
 
-    def calculate_success_rate(self) -> float:
-        results = self.validation_results
-        if results['total_questions'] == 0:
-            return 0.0
-        
-        successful_questions = results['migrated_questions'] + len(results['ignored_questions'])
-        return (successful_questions / results['total_questions']) * 100
+
 
     def generate_report(self) -> str:
         """Generate a validation report."""
         results = self.validation_results
-        success_rate = self.calculate_success_rate()
-
         report = f"""
 # Migration Validation Report
 
-Success rate is determined by the formula: (migrated questions + ignored questions) / total questions * 100
 
 ## Summary
 - Total SO Questions: {results['total_questions']}
 - Total Migrated Questions: {results['migrated_questions']}
 - Ignored Questions: {len(results['ignored_questions'])}
-- Success Rate: {success_rate:.1f}%
+- Migrated + Ignored Questions: {results['migrated_questions'] + len(results['ignored_questions'])}
 - Missing Questions: {len(results['missing_questions'])}
 - Content Issues: {len(results['content_issues'])}
 - Answer Mismatches: {len(results['answer_mismatches'])}
@@ -515,16 +514,21 @@ def main():
     parser.add_argument('--category', required=True, help='Discussion category name')
     parser.add_argument('--questions-file', default='questions_answers_comments.json',
                         help='Path to questions JSON file')
+    parser.add_argument('--tags-file', default='tags.json', help='Path to tags JSON file')
     parser.add_argument('--output', default='validation_report.md',
                         help='Output file for validation report')
     parser.add_argument('--ignore-tags', 
                      type=str, 
                      nargs='+',
                      help='List of tags that were ignored in the migration process (space-separated). Questions that were tagged with these tag(s) were not migrated.')
+    parser.add_argument('--tag-min-threshold',
+                         type=int,
+                         default=1,
+                         help='The value used in the migration process to determine if a tag would be migrated. (default=1)')
     parser.add_argument('--popular-tag-min-threshold',
                         required=True,
                         type=int,
-                        help='The value used in the migration process to determine popular tags.')
+                        help='The value used in the migration process to determine popular questions.')
 
     args = parser.parse_args()
 
@@ -542,10 +546,10 @@ def main():
     github_auth_manager.initialize()
     
     # Create validator
-    validator = MigrationValidator(github_auth_manager, owner, name, args.category, args.ignore_tags, args.popular_tag_min_threshold)
+    validator = MigrationValidator(github_auth_manager, owner, name, args.category, args.ignore_tags, args.popular_tag_min_threshold, args.tag_min_threshold)
 
     # Run validation
-    validator.validate_migration(args.questions_file)
+    validator.validate_migration(args.questions_file, args.tags_file)
     
     # Generate and save report
     report = validator.generate_report()

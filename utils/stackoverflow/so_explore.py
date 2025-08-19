@@ -23,6 +23,7 @@ import duckdb as dd
 # dd.sql("select question_id, view_count from './questions_answers_comments.json' as questions where view_count >= 100 order by view_count desc").show()
 # dd.sql("select questions.answers.comments.link, questions.answers.link, questions.answers.share_link, questions.link, questions.share_link from './questions_answers_comments.json' as questions").show()
 # dd.sql("select unnest(questions.comments).link, unnest(questions.answers).share_link, unnest(questions.answers).link, unnest(questions.answers.comments).link, questions.link, questions.share_link from './questions_answers_comments.json' as questions").show()
+dd.sql("select tags.name, tags.count, from './tags.json' as tags where tags.count < 5").show()
 
 # This gets all links and share_links from answers, questions and comments and outputs them to a file. User links are ignored
 #dd.sql("Copy (" \

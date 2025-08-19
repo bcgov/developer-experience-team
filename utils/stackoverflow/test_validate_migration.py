@@ -173,6 +173,47 @@ class TestMigrationValidator(unittest.TestCase):
         self.assertIn("networking", issues[0])
         self.assertIn("troubleshooting", issues[0])
 
+    def test_validate_question_content_has_low_usage_tag(self):
+        """Test validation when a low usage tag is present."""
+        so_question = {
+            "title": "VPN Help",
+            "body": "Need VPN help.",
+            "tags": ["vpn", "networking", "troubleshooting"]
+        }
+
+        gh_discussion = {
+            "title": "VPN Help",
+            "body": "Need VPN help.",
+            "labels": {"nodes": [{"name": "vpn"}, {"name": "troubleshooting"}]}
+        }
+
+        mock_low_usage_tags_data = ["networking", "help"]
+
+        issues = self.validator.validate_question_content(so_question, gh_discussion, mock_low_usage_tags_data)
+        self.assertEqual(len(issues), 0)
+
+    def test_validate_question_content_missing_mixed_missing_and_low_usage_tag(self):
+        """Test validation when a low usage tag is present."""
+        so_question = {
+            "title": "VPN Help",
+            "body": "Need VPN help.",
+            "tags": ["vpn", "networking", "troubleshooting"]
+        }
+
+        gh_discussion = {
+            "title": "VPN Help",
+            "body": "Need VPN help.",
+            "labels": {"nodes": [{"name": "vpn"}]}
+        }
+
+        mock_low_usage_tags_data = ["networking", "help"]
+
+        issues = self.validator.validate_question_content(so_question, gh_discussion, mock_low_usage_tags_data)
+        self.assertEqual(len(issues), 1)    
+        self.assertIn("Missing tags:", issues[0])
+        # Check that both missing tags are mentioned, regardless of order
+        self.assertIn("troubleshooting", issues[0])
+
     def test_validate_question_content_with_images_matching(self):
         """Test validation when images are present and match between SO and GH."""
         so_question = {
@@ -1069,12 +1110,44 @@ class TestIgnoredTagsFunctionality(unittest.TestCase):
                 "tags": ["current", "deprecated"]
             }
         ]
-        mock_load_json.return_value = mock_so_questions
+        
+        # Mock the tags data (second file parameter)
+        mock_tags_data = [
+            {
+                "count": 145,
+                "name": "openshift"
+            },
+            {
+                "count": 32,
+                "name": "keycloak"
+            },
+            {
+                "count": 26,
+                "name": "security"
+            },
+            {
+                "count": 15,
+                "name": "deprecated"
+            },
+            {
+                "count": 10,
+                "name": "legacy"
+            }
+        ]
+        
+        # Configure mock to return different data based on which file is being loaded
+        def mock_load_json_side_effect(file_path):
+            if "mock_tag_file.json" in file_path:
+                return mock_tags_data
+            else:
+                return mock_so_questions
+        
+        mock_load_json.side_effect = mock_load_json_side_effect
         
         # Mock get_github_discussions to return empty (none migrated)
         validator.get_github_discussions = Mock(return_value=[])
         
-        results = validator.validate_migration("dummy_file.json")
+        results = validator.validate_migration("mock_so_file.json", "mock_tag_file.json")
         
         # Check results
         self.assertEqual(results['total_questions'], 4)
