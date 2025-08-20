@@ -886,7 +886,7 @@ def main():
 class TagsToIgnore:
     """Helper class to manage tags that should be ignored during migration."""
 
-    def __init__(self, tags_to_ignore: Optional[list[str]] = None):
+    def __init__(self, tags_to_ignore: Optional[List[str]] = None):
         """Initialize tags to ignore.
         
         Args:
