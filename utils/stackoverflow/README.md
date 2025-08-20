@@ -377,6 +377,81 @@ The script provides detailed feedback including:
 3. Use `--force` only in automated scripts where confirmation isn't possible
 4. Monitor the logs for any failures during bulk operations
 
+## Discussion Deletion (delete_discussions.py)
+A utility script for deleting specific GitHub Discussions based on Stack Overflow question IDs. This tool is particularly useful for cleaning up failed migrations or removing specific discussions that need to be re-migrated.
+
+### Requirements
+* Python 3.x
+* Dependencies listed in requirements.txt
+* GitHub App with appropriate permissions (Contents, Discussions, Metadata)
+
+### Setup
+1. Install the required dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+2. Set up GitHub App authentication by setting these environment variables:
+   ```
+   export GHD_INSTALLATION_ID=your_installation_id
+   export GHD_APP_ID=your_github_app_id
+   export GHD_PRIVATE_KEY=/path/to/your/private-key.pem
+   ```
+
+### Usage
+```
+python delete_discussions.py --repo OWNER/REPO --category CATEGORY_NAME --question-ids ID_FILE [options]
+```
+
+#### Parameters
+- `--repo` (required): GitHub repository in format owner/name
+- `--category` (required): GitHub Discussion category name to search in
+- `--question-ids` (required): File containing Stack Overflow question IDs to delete (one per line)
+- `--input`: Input JSON file containing Stack Overflow data (default: questions_answers_comments.json)
+- `--api-delay`: Minimum seconds between API calls (default: 1.0)
+- `--dry-run`: Show what would be deleted without actually deleting
+
+#### Examples
+
+**Preview what would be deleted (recommended first step):**
+```bash
+python delete_discussions.py --repo bcgov/gh-discussions-lab --category "Q&A" --question-ids failed_questions.txt --dry-run
+```
+
+**Delete discussions for specific question IDs:**
+```bash
+python delete_discussions.py --repo bcgov/gh-discussions-lab --category "Q&A" --question-ids failed_questions.txt
+```
+
+**Use custom input file and API delay:**
+```bash
+python delete_discussions.py --repo bcgov/gh-discussions-lab --category "Q&A" --question-ids failed_questions.txt --input custom_questions.json --api-delay 2.0
+```
+
+### Question ID File Format
+Create a text file with one question ID per line. Comments (lines starting with #) are ignored:
+```
+# Failed question IDs from populate_discussion.py run
+# Lines starting with # are ignored
+
+1354
+1320
+1321
+1285
+```
+
+
+### Output
+The script provides the following feedback:
+- Number of question IDs loaded and found in SO data
+- Per-discussion processing status with titles
+- Progress updates during deletion
+- Summary statistics (deleted, not found, errors)
+- All operations logged to `delete_discussions.log`
+
+### Safety Warnings
+⚠️ **DESTRUCTIVE OPERATION**: This script permanently deletes GitHub discussions and all their comments. This action cannot be undone.
+
+
 ## URL Validation with Playwright (validate_urls_playwright.py)
 A browser-based URL validation tool that checks if URLs return HTTP 301 redirects. This script is used for validating redirects to GitHub that require SSO authentication, which cannot be tested programmatically with standard HTTP libraries.
 

@@ -2,7 +2,7 @@
 """
 Delete GitHub Discussions based on Stack Overflow question IDs.
 
-This script reads a list of question IDs, finds the corresponding questions in the 
+This script reads a list of SO question IDs, finds the corresponding questions in the 
 questions_answers_comments.json file, looks up the GitHub discussions by title,
 and deletes them along with all associated comments.
 """
@@ -16,7 +16,7 @@ from collections import namedtuple
 
 from populate_discussion_helpers import RateLimiter, GitHubAuthManager, GraphQLHelper
 from populate_discussion import (
-    load_json, decode_html_entities, get_category_id, find_discussion_by_title
+    load_json, decode_html_entities, get_category_id, find_discussion_by_title, Category
 )
 
 # Setup logging
@@ -38,8 +38,6 @@ root_logger.addHandler(logger_file_handler)
 # Get logger for this module
 logger = logging.getLogger(__name__)
 
-
-Category = namedtuple('Category', ['id', 'name'])
 
 def load_question_ids_from_file(file_path: str) -> List[int]:
     """Load question IDs from a text file (one ID per line)."""
@@ -295,7 +293,7 @@ Examples:
     error_count = 0
     
     for question_id, question in questions_map.items():
-        title = decode_html_entities(question.get('title'))
+        title = decode_html_entities(question.get('title') or "")
         logger.info(f"Processing question {question_id}: {title}")
         
         try:
