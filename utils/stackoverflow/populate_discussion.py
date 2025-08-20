@@ -881,7 +881,7 @@ def main():
             question_id = question['question_id'] if question else "Unknown ID"
             logger.error(f"Error processing question_id {question_id} question #{i+1}: {e}")
             continue
-
+    logger.info("Completed processing questions.")
 
 
 class TagsToIgnore:
