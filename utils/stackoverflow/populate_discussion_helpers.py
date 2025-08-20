@@ -7,6 +7,7 @@ import logging
 import time
 from github import Github, Auth
 import requests
+from typing import Optional
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -87,7 +88,9 @@ class GitHubAuthManager:
         if not self._initialized:
             raise Exception("GitHub auth not initialized. Call initialize() first.")
         
-        return  self._github_auth.token
+        if self._github_auth is None:
+            raise Exception("GitHub authentication has not been initialized or failed.")
+        return self._github_auth.token
     
     def get_client(self):
         """Get the current GitHub client."""
@@ -104,8 +107,7 @@ class GitHubAuthManager:
 
 class GraphQLHelper:
     """Helper class for GraphQL operations."""
-    
-    def __init__(self, github_auth_manager: GitHubAuthManager, rate_limiter: RateLimiter = None):
+    def __init__(self, github_auth_manager: GitHubAuthManager, rate_limiter: Optional[RateLimiter] = None):
         """Initialize with GitHub auth manager and optional rate limiter.
         
         Args:

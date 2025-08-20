@@ -64,7 +64,7 @@ def get_labels(repo):
     """Get all labels in the repository"""
     return {label.name: label for label in repo.get_labels()}
 
-def create_label(repo, name: str, description: str = None):
+def create_label(repo, name: str, description: Optional[str] = None):
     """Create a new label in the repository, ensuring description is < 100 chars"""
     if description and len(description) > 100:
         description = description[:97] + '...'
@@ -472,7 +472,10 @@ def get_tags_under_threshold(min_threshold: int, tags_data: List[Dict[str, Any]]
     Returns:
         List of tag names (strings) for tags with count < min_threshold
     """
-    return [tag['name'] for tag in tags_data if tag.get('count', 0) < min_threshold]
+    logger.info(f"Identifying tags with count below threshold of {min_threshold}")
+    low_count_tags = [tag['name'] for tag in tags_data if tag.get('count', 0) < min_threshold]
+    logger.info(f"Found {len(low_count_tags)} tags below threshold: {low_count_tags}")
+    return low_count_tags
 
 def get_tags_at_or_above_threshold(min_threshold: int, tags_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Get tag objects for tags with count at or above the minimum threshold.
@@ -682,6 +685,11 @@ def main():
     github_auth_manager = GitHubAuthManager()
     github_auth_manager.initialize()
 
+    github_client = github_auth_manager.get_client()
+    if github_client is None:
+        logger.error("GitHub client is not initialized. Please check your authentication setup.")
+        raise RuntimeError("GitHub client is not initialized.")
+
     github_graphql = GraphQLHelper(github_auth_manager, rate_limiter)
     
     repo_parts = args.repo.split('/')
@@ -689,7 +697,7 @@ def main():
         raise ValueError("Repository must be in format 'owner/name'")
 
     owner, name = repo_parts
-    repo = github_auth_manager.get_client().get_repo(f"{owner}/{name}")
+    repo = github_client.get_repo(f"{owner}/{name}")
 
     logger.info(f"Using repo '{repo.full_name}'")
 
@@ -879,7 +887,7 @@ def main():
 class TagsToIgnore:
     """Helper class to manage tags that should be ignored during migration."""
 
-    def __init__(self, tags_to_ignore: list[str] = None):
+    def __init__(self, tags_to_ignore: Optional[List[str]] = None):
         """Initialize tags to ignore.
         
         Args:
@@ -900,7 +908,7 @@ class TagsToIgnore:
             True if any tag should be ignored, False otherwise
         """
 
-        return self.tags_to_ignore and any(t in self.tags_to_ignore for t in tags)
+        return bool(self.tags_to_ignore) and any(t in self.tags_to_ignore for t in tags)
 
 if __name__ == '__main__':
     main()
