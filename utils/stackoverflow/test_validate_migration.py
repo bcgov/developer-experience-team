@@ -246,9 +246,10 @@ class TestMigrationValidator(unittest.TestCase):
         }
         
         issues = self.validator.validate_question_content(so_question, gh_discussion)
-        self.assertEqual(len(issues), 1)
+        self.assertEqual(len(issues), 2)
         self.assertIn("Missing images:", issues[0])
         self.assertIn("3545-sdfkb-adf2.png", issues[0])
+        self.assertIn("Body content not found", issues[1])
 
     def test_validate_question_content_with_multiple_images(self):
         """Test validation with multiple images in question body."""
@@ -548,11 +549,11 @@ class TestMigrationValidator(unittest.TestCase):
                 "nodes": [
                     # Question comments (top-level)
                     {
-                        "body": "> [!NOTE]\n> Comment by user1 on 2024-01-15\n\nGreat question!",
+                        "body": "> [!NOTE]\n> Originally commented on by user1 on 2024-01-15\n\nGreat question!",
                         "replyTo": None
                     },
                     {
-                        "body": "> [!NOTE]\n> Comment by user2 on 2024-01-15\n\nI have the same issue.",
+                        "body": "> [!NOTE]\n> Originally commented on by user2 on 2024-01-15\n\nI have the same issue.",
                         "replyTo": None
                     },
                     # Answer comments (with replies)
@@ -602,11 +603,11 @@ class TestMigrationValidator(unittest.TestCase):
                 "nodes": [
                     # Question comments (correct)
                     {
-                        "body": "> [!NOTE]\n> Comment by user1\n\nComment 1",
+                        "body": "> [!NOTE]\n> Originally commented on by user1\n\nComment 1",
                         "replyTo": None
                     },
                     {
-                        "body": "> [!NOTE]\n> Comment by user2\n\nComment 2",
+                        "body": "> [!NOTE]\n> Originally commented on by user2\n\nComment 2",
                         "replyTo": None
                     },
                     # Answer with missing reply
@@ -667,7 +668,7 @@ class TestMigrationValidator(unittest.TestCase):
                 "nodes": [
                     # Question comment (top-level)
                     {
-                        "body": "> [!NOTE]\n> Comment by user1\n\nQuestion comment",
+                        "body": "> [!NOTE]\n> Originally commented on by user1\n\nQuestion comment",
                         "replyTo": None
                     },
                     # Answer with reply
@@ -699,7 +700,7 @@ class TestMigrationValidator(unittest.TestCase):
             "comments": {
                 "nodes": [
                     {
-                        "body": "> [!NOTE]\n> Comment by user1\n\nOnly question comment",
+                        "body": "> [!NOTE]\n> Originally commented on by user1\n\nOnly question comment",
                         "replyTo": None
                     }
                 ]
@@ -794,7 +795,7 @@ class TestMigrationValidator(unittest.TestCase):
             "comments": {
                 "nodes": [
                     {
-                        "body": "> [!NOTE]\n> Comment by user1\n\nQuestion comment 1",
+                        "body": "> [!NOTE]\n> Originally commented on by user1\n\nQuestion comment 1",
                         "replyTo": None
                     },
                     # Missing second question comment
@@ -829,7 +830,7 @@ class TestMigrationValidator(unittest.TestCase):
             "comments": {
                 "nodes": [
                     {
-                        "body": "> [!NOTE]\n> Comment by user1\n\nQuestion comment",
+                        "body": "> [!NOTE]\n> Originally commented on by user1\n\nQuestion comment",
                         "replyTo": None  # Top-level question comment
                     },
                     {
@@ -870,11 +871,11 @@ class TestMigrationValidator(unittest.TestCase):
                 "nodes": [
                     # Question comments
                     {
-                        "body": "> [!NOTE]\n> Comment by user1\n\nQuestion comment 1",
+                        "body": "> [!NOTE]\n> Originally commented on by user1\n\nQuestion comment 1",
                         "replyTo": None
                     },
                     {
-                        "body": "> [!NOTE]\n> Comment by user2\n\nQuestion comment 2",
+                        "body": "> [!NOTE]\n> Originally commented on by user2\n\nQuestion comment 2",
                         "replyTo": None
                     },
                     # First answer with replies

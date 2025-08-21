@@ -9,6 +9,9 @@ from populate_discussion import (
     load_json, decode_html_entities, get_category_id, POPULAR_TAG_NAME, get_tags_under_threshold
 )
 import duckdb as dd
+from rapidfuzz import fuzz
+
+DEFAULT_TEXT_SIMILARITY_PERCENTAGE = 90
 
 # Configure logging only if no handlers are already set up
 if not logging.getLogger().handlers:
@@ -64,7 +67,7 @@ def normalize_image_urls(text: str) -> str:
     return text
 
 class MigrationValidator:
-    def __init__(self, auth_manager: GitHubAuthManager, owner: str, name: str, category_name: str, ignored_tags: Optional[List[str]] = None, popular_tag_min_threshold: int = 200, tag_min_threshold: int = 1):
+    def __init__(self, auth_manager: GitHubAuthManager, owner: str, name: str, category_name: str, ignored_tags: Optional[List[str]] = None, popular_tag_min_threshold: int = 200, tag_min_threshold: int = 1, text_similarity_percentage: int = DEFAULT_TEXT_SIMILARITY_PERCENTAGE):
         self.owner = owner
         self.name = name
         self.category_name = category_name
@@ -73,6 +76,7 @@ class MigrationValidator:
         self.tag_min_threshold = tag_min_threshold
         self.github_graphql = GraphQLHelper(auth_manager)
         self.popular_gh_questions = set()
+        self.text_similarity_percentage = text_similarity_percentage
         self.validation_results = {
             'total_questions': 0,
             'migrated_questions': 0,
@@ -178,28 +182,13 @@ class MigrationValidator:
         missing_images = so_images - gh_images
         if missing_images:
             issues.append(f"Missing images: {missing_images}")
-        
-        # Normalize image URLs for comparison
-        so_body_normalized = normalize_image_urls(so_body)
-        gh_body_normalized = normalize_image_urls(gh_body)
-        
-        # Check content - if images are missing, also try text-only comparison
-        content_found = so_body_normalized in gh_body_normalized
-        
-        if not content_found and missing_images:
-            # Try comparing without image syntax
-            so_text_only = re.sub(r'!\[[^\]]*\]\([^)]+\)', '', so_body)
-            so_text_only = re.sub(r'<img [^>]*>', '', so_text_only)
-            so_text_only = ' '.join(so_text_only.split())  # Normalize whitespace
-            
-            gh_text_only = re.sub(r'!\[[^\]]*\]\([^)]+\)', '', gh_body)
-            gh_text_only = re.sub(r'<img [^>]*>', '', gh_text_only)
-            gh_text_only = ' '.join(gh_text_only.split())  # Normalize whitespace
-            
-            if so_text_only.strip() and so_text_only in gh_text_only:
-                content_found = True
-        
-        if so_body_normalized and not content_found:
+
+        gh_body_without_header = self.extract_content_without_header(gh_body)
+        normalized_gh_body = normalize_image_urls(gh_body_without_header.strip())
+        normalized_so_body = normalize_image_urls(so_body.strip())
+        content_found = self._validate_content_match(normalized_so_body, normalized_gh_body, so_title)
+
+        if not content_found:
             issues.append(f"Body content not found in GitHub discussion")
         
         # Check tags/labels
@@ -214,6 +203,18 @@ class MigrationValidator:
         if POPULAR_TAG_NAME in gh_labels:
             self.popular_gh_questions.add(gh_title)
         return issues
+
+    def _validate_content_match(self, so_text: str, gh_text: str, title: str) -> bool:
+        """Check if the content of the Stack Overflow question body matches the GitHub discussion body.
+        A similarity score of self.text_similarity_percentage% or better indicates a match.
+        """
+        if not so_text or not gh_text:
+            return not so_text and not gh_text
+
+        similarity = fuzz.ratio(so_text, gh_text)
+        if similarity < self.text_similarity_percentage:
+            logger.info(f"Under content similarity for - {title} - similarity was: {similarity}%")
+        return similarity >= self.text_similarity_percentage
 
     def validate_answers(self, so_question: Dict, gh_discussion: Dict) -> List[str]:
         """Validate that answers were transferred correctly."""
@@ -247,7 +248,7 @@ class MigrationValidator:
             # First, try to find exact normalized match (with whitespace normalization)
             for gh_comment in gh_comments:
                 gh_comment_normalized = normalize_image_urls(gh_comment['body'])
-                
+
                 # Normalize whitespace for comparison
                 so_normalized_clean = ' '.join(so_answer_normalized.split())
                 gh_normalized_clean = ' '.join(gh_comment_normalized.split())
@@ -268,18 +269,7 @@ class MigrationValidator:
                     # Extract just the text content from GitHub comment (after header)
                     gh_body = gh_comment['body']
                     # Remove the "Originally answered by" header
-                    if "> [!NOTE]" in gh_body:
-                        lines = gh_body.split('\n')
-                        content_lines = []
-                        skip_header = True
-                        for line in lines:
-                            if skip_header and (line.startswith('>') or line.strip() == ''):
-                                continue
-                            skip_header = False
-                            content_lines.append(line)
-                        gh_text_content = '\n'.join(content_lines)
-                    else:
-                        gh_text_content = gh_body
+                    gh_text_content = self.extract_content_without_header(gh_body)
                     
                     # Remove image syntax from GitHub text
                     gh_text_only = re.sub(r'!\[[^\]]*\]\([^)]+\)', '', gh_text_content)
@@ -304,6 +294,21 @@ class MigrationValidator:
         
         return issues
 
+    def extract_content_without_header(self, gh_text: str) -> str:
+        if "> [!NOTE]" in gh_text:
+            lines = gh_text.split('\n')
+            content_lines = []
+            skip_header = True
+            for line in lines:
+                if skip_header and (line.startswith('>') or line.strip() == ''):
+                    continue
+                skip_header = False
+                content_lines.append(line)
+            gh_text_content = '\n'.join(content_lines)
+        else:
+            gh_text_content = gh_text
+        return gh_text_content
+
     def validate_comments(self, so_question: Dict, gh_discussion: Dict) -> List[str]:
         """Validate that comments were transferred correctly.
         
@@ -319,9 +324,9 @@ class MigrationValidator:
         total_so_comments = so_question_comments + so_answer_comments
         
         # Count GH comments and replies
-        # Question comments become top-level comments with 'Comment by' in body
+        # Question comments become top-level comments with 'Originally commented on by' in body
         gh_question_comments = [c for c in gh_discussion['comments']['nodes'] 
-                               if 'Comment by' in c['body'] and not c.get('replyTo')]
+                               if 'Originally commented on by' in c['body'] and not c.get('replyTo')]
         
         # Answer comments become replies to answer comments (with 'Originally answered by')
         gh_answer_replies = []
@@ -386,8 +391,8 @@ class MigrationValidator:
                 self.validation_results['missing_questions'].append(f"{so_question['question_id']} - {so_title}")
 
     def get_popular_so_questions_sql(self, questions_file: str) -> List:
-        return  dd.sql(f"select title from '{questions_file}' as questions where view_count >= {self.popular_tag_min_threshold}").df()['title'].tolist()
-    
+        return dd.sql(f"select title from '{questions_file}' as questions where view_count >= {self.popular_tag_min_threshold} and not (tags && {self.ignored_tags})").df()['title'].tolist()
+
     def get_popular_so_questions(self, questions_file: str) -> set:
         results = self.get_popular_so_questions_sql(questions_file)
         return set(map(decode_html_entities, results))
@@ -529,11 +534,18 @@ def main():
                         required=True,
                         type=int,
                         help='The value used in the migration process to determine popular questions.')
+    parser.add_argument('--text-similarity-percentage',
+                        type=int,
+                        default=DEFAULT_TEXT_SIMILARITY_PERCENTAGE,
+                        help='The minimum text similarity percentage between SO and GHD content to be considered the same. (default=90)')
 
     args = parser.parse_args()
 
     if args.popular_tag_min_threshold < 0:
         raise ValueError("Popular tag minimum threshold must be a non-negative integer.")
+
+    if args.text_similarity_percentage < 0 or args.text_similarity_percentage > 100:
+        raise ValueError("Text similarity percentage must be between 0 and 100.")
 
     # Parse repository
     repo_parts = args.repo.split('/')
@@ -546,7 +558,7 @@ def main():
     github_auth_manager.initialize()
     
     # Create validator
-    validator = MigrationValidator(github_auth_manager, owner, name, args.category, args.ignore_tags, args.popular_tag_min_threshold, args.tag_min_threshold)
+    validator = MigrationValidator(github_auth_manager, owner, name, args.category, args.ignore_tags, args.popular_tag_min_threshold, args.tag_min_threshold, args.text_similarity_percentage)
 
     # Run validation
     validator.validate_migration(args.questions_file, args.tags_file)
