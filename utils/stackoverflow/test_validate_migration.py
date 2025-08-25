@@ -58,6 +58,100 @@ class TestImageHandling(unittest.TestCase):
         self.assertEqual(so_normalized, gh_normalized)
 
 
+class TestContentHeaderExtraction(unittest.TestCase):
+    """Unit tests for extract_content_without_header functionality."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        # Create a mock auth manager
+        self.mock_auth_manager = Mock(spec=GitHubAuthManager)
+        self.mock_auth_manager.get_token.return_value = "test_token"
+        self.mock_auth_manager.is_initialized = True
+        
+        self.validator = MigrationValidator(
+            auth_manager=self.mock_auth_manager,
+            owner="test_owner", 
+            name="test_repo",
+            category_name="Q&A"
+        )
+
+    def test_extract_content_without_header_removes_boilerplate(self):
+        """Test that boilerplate header is removed correctly."""
+        gh_text = """> [!NOTE]
+> Originally asked by user123 on 2024-01-15
+> It had 0 votes.
+
+This is the actual content that should remain.
+It has multiple lines.
+And should all be preserved."""
+        
+        expected_content = """This is the actual content that should remain.
+It has multiple lines.
+And should all be preserved."""
+        
+        result = self.validator.extract_content_without_header(gh_text)
+        self.assertEqual(result, expected_content)
+
+    def test_extract_content_without_header_preserves_user_admonitions(self):
+        """Test that user's own admonitions are preserved after boilerplate removal."""
+        gh_text = """> [!NOTE]
+> Originally asked by user123 on 2024-01-15
+> It had 5 votes.
+
+
+> [!WARNING]
+> This is the user's own warning admonition that should be preserved.
+
+More content after the user's admonition."""
+        
+        expected_content = """\n> [!WARNING]
+> This is the user's own warning admonition that should be preserved.
+
+More content after the user's admonition."""
+        
+        result = self.validator.extract_content_without_header(gh_text)
+        self.assertEqual(result, expected_content)
+
+    def test_extract_content_without_header_no_boilerplate(self):
+        """Test that text without boilerplate header is returned as-is."""
+        gh_text = """This is regular content without any boilerplate header.
+It should be returned exactly as provided.
+
+> [!TIP]
+> This user admonition should also be preserved."""
+        
+        result = self.validator.extract_content_without_header(gh_text)
+        self.assertEqual(result, gh_text)
+
+    def test_extract_content_with_only_boilerplate(self):
+        """Test handling when there's only boilerplate and empty content."""
+        gh_text = """> [!NOTE]
+> Originally asked by user123 on 2024-01-15
+> It had 1 vote.
+
+"""
+        
+        expected_content = ""
+        
+        result = self.validator.extract_content_without_header(gh_text)
+        self.assertEqual(result, expected_content)
+
+
+    def test_extract_content_no_boilerplate_user_admonition_at_top(self):
+        """Test with mixed quote blocks where user content has quotes."""
+        gh_text = """> [!CAUTION]
+> This is a user admonition that should also be preserved."""
+
+        expected_content = """> [!CAUTION]
+> This is a user admonition that should also be preserved."""
+
+        result = self.validator.extract_content_without_header(gh_text)
+        self.assertEqual(result, expected_content)
+
+        result = self.validator.extract_content_without_header(gh_text)
+        self.assertEqual(result, expected_content)
+
+
 class TestMigrationValidator(unittest.TestCase):
     """Unit tests for the MigrationValidator class."""
 
@@ -86,7 +180,7 @@ class TestMigrationValidator(unittest.TestCase):
         
         gh_discussion = {
             "title": "How do I connect to VPN?",
-            "body": "> [!NOTE]\n> Originally asked by user123 on 2024-01-15\n\nI need help connecting to the BC Gov VPN.",
+            "body": "> [!NOTE]\n> Originally asked by user123 on 2024-01-15\n> It had 5 votes.\n\nI need help connecting to the BC Gov VPN.",
             "labels": {
                 "nodes": [
                     {"name": "vpn"},
@@ -224,7 +318,7 @@ class TestMigrationValidator(unittest.TestCase):
         
         gh_discussion = {
             "title": "How to configure OpenShift?",
-            "body": "> [!NOTE]\n> Originally asked by user123 on 2024-01-15\n\nHere's my setup: ![screenshot](https://github.com/bcgov/gh-discussions-lab/blob/main/discussion_images/3545-sdfkb-adf2.png?raw=true)",
+            "body": "> [!NOTE]\n> Originally asked by user123 on 2024-01-15\n> It had 0 votes.\n\nHere's my setup: ![screenshot](https://github.com/bcgov/gh-discussions-lab/blob/main/discussion_images/3545-sdfkb-adf2.png?raw=true)",
             "labels": {"nodes": [{"name": "openshift"}]}
         }
         
@@ -263,7 +357,7 @@ class TestMigrationValidator(unittest.TestCase):
         
         gh_discussion = {
             "title": "Multiple screenshots", 
-            "body": '''> [!NOTE]\n> Originally asked by user123 on 2024-01-15\n\nHere are two images:
+            "body": '''> [!NOTE]\n> Originally asked by user123 on 2024-01-15\n> It had 1 vote.\n\nHere are two images:
             ![first](https://github.com/bcgov/gh-discussions-lab/blob/main/discussion_images/image1.png?raw=true)
             <img src="https://github.com/bcgov/gh-discussions-lab/blob/main/discussion_images/image2.jpg?raw=true" alt="second">''',
             "labels": {"nodes": [{"name": "help"}]}
@@ -282,7 +376,7 @@ class TestMigrationValidator(unittest.TestCase):
         
         gh_discussion = {
             "title": "Image URL Test",
-            "body": "> [!NOTE]\n> Originally asked by user123 on 2024-01-15\n\nCheck this image: ![test](https://github.com/bcgov/gh-discussions-lab/blob/main/discussion_images/test.png?raw=true) and this text after.",
+            "body": "> [!NOTE]\n> Originally asked by user123 on 2024-01-15\n> It had 2 votes.\n\nCheck this image: ![test](https://github.com/bcgov/gh-discussions-lab/blob/main/discussion_images/test.png?raw=true) and this text after.",
             "labels": {"nodes": [{"name": "test"}]}
         }
         
@@ -389,6 +483,30 @@ class TestMigrationValidator(unittest.TestCase):
         self.assertEqual(len(issues), 1)
         self.assertIn("GitHub has accepted answer but SO doesn't", issues[0])
 
+    def test_validate_answers_wrong_answer_marked_as_accepted(self):
+        """Test validation when GitHub has wrong answer marked as accepted."""
+        so_question = {
+            "answers": [
+                {"answer_id": 1, "body": "Answer 1", "is_accepted": True},
+                {"answer_id": 2, "body": "Answer 2", "is_accepted": False}
+            ],
+            "accepted_answer_id": 1
+        }
+
+        gh_discussion = {
+            "comments": {
+                "nodes": [
+                    {"body": "> [!NOTE]\n> Originally answered by user1\n> It had 0 votes.\n\nAnswer 1", "isAnswer": False},
+                    {"body": "> [!NOTE]\n> Originally answered by user1\n> It had 1 vote.\n\nAnswer 2", "isAnswer": True}
+                ]
+            }
+        }
+
+        issues = self.validator.validate_answers(so_question, gh_discussion)
+        self.assertEqual(len(issues), 2)
+        self.assertIn("GitHub and SO have different accepted answers", issues[0])
+        self.assertIn("GitHub and SO have different accepted answers", issues[1])
+
     def test_validate_answers_no_answers(self):
         """Test validation when there are no answers."""
         so_question = {
@@ -421,7 +539,7 @@ class TestMigrationValidator(unittest.TestCase):
             "comments": {
                 "nodes": [
                     {
-                        "body": "> [!NOTE]\n> Originally answered by user1 on 2024-01-15\n\nTry this solution: ![solution](https://github.com/bcgov/gh-discussions-lab/blob/main/discussion_images/solution.png?raw=true)",
+                        "body": "> [!NOTE]\n> Originally answered by user1 on 2024-01-15. \n> It had 3 votes.\n\nTry this solution: ![solution](https://github.com/bcgov/gh-discussions-lab/blob/main/discussion_images/solution.png?raw=true)",
                         "isAnswer": True
                     }
                 ]
@@ -447,7 +565,7 @@ class TestMigrationValidator(unittest.TestCase):
             "comments": {
                 "nodes": [
                     {
-                        "body": "> [!NOTE]\n> Originally answered by user1 on 2024-01-15\n\nCheck this diagram: (diagram missing)",
+                        "body": "> [!NOTE]\n> Originally answered by user1 on 2024-01-15\n> It had 0 votes.\n\nCheck this diagram: (diagram missing)",
                         "isAnswer": False
                     }
                 ]
@@ -456,8 +574,8 @@ class TestMigrationValidator(unittest.TestCase):
         
         issues = self.validator.validate_answers(so_question, gh_discussion)
         self.assertEqual(len(issues), 1)
-        self.assertIn("Missing images in answer:", issues[0])
-        self.assertIn("diagram.png", issues[0])
+        # if diagrams are not in the answer, it will be flagged as a non matching answer
+        self.assertIn("Could not find matching answer ", issues[0])
 
     def test_validate_answers_with_multiple_images_in_answer(self):
         """Test validation with multiple images in a single answer."""
@@ -465,10 +583,7 @@ class TestMigrationValidator(unittest.TestCase):
             "answers": [
                 {
                     "answer_id": 1,
-                    "body": '''Here's the complete solution:
-                    ![step1](https://stackoverflow.developer.gov.bc.ca/images/a/step1.png)
-                    <img src="https://stackoverflow.developer.gov.bc.ca/images/b/step2.jpg" alt="step2">
-                    Follow these steps.''',
+                    "body": '''Here's the complete solution:\n![step1](https://stackoverflow.developer.gov.bc.ca/images/a/step1.png)\n<img src="https://stackoverflow.developer.gov.bc.ca/images/b/step2.jpg" alt="step2">\nFollow these steps.''',
                     "is_accepted": True
                 }
             ],
@@ -479,7 +594,7 @@ class TestMigrationValidator(unittest.TestCase):
             "comments": {
                 "nodes": [
                     {
-                        "body": "> [!NOTE]\n> Originally answered by user1 on 2024-01-15\n\nHere's the complete solution:\n![step1](https://github.com/bcgov/gh-discussions-lab/blob/main/discussion_images/step1.png?raw=true)\n<img src=\"https://github.com/bcgov/gh-discussions-lab/blob/main/discussion_images/step2.jpg?raw=true\" alt=\"step2\">\nFollow these steps.",
+                        "body": "> [!NOTE]\n> Originally answered by user1 on 2024-01-15\n> It had 1 vote.\n\nHere's the complete solution:\n![step1](https://github.com/bcgov/gh-discussions-lab/blob/main/discussion_images/step1.png?raw=true)\n<img src=\"https://github.com/bcgov/gh-discussions-lab/blob/main/discussion_images/step2.jpg?raw=true\" alt=\"step2\">\nFollow these steps.",
                         "isAnswer": True
                     }
                 ]
@@ -495,9 +610,7 @@ class TestMigrationValidator(unittest.TestCase):
             "answers": [
                 {
                     "answer_id": 1,
-                    "body": '''Solution with images:
-                    ![present](https://stackoverflow.developer.gov.bc.ca/images/a/present.png)
-                    ![missing](https://stackoverflow.developer.gov.bc.ca/images/a/missing.png)''',
+                    "body": '''Solution with images:\n![present](https://stackoverflow.developer.gov.bc.ca/images/a/present.png)\n![missing](https://stackoverflow.developer.gov.bc.ca/images/a/missing.png)''',
                     "is_accepted": False
                 }
             ]
@@ -507,7 +620,7 @@ class TestMigrationValidator(unittest.TestCase):
             "comments": {
                 "nodes": [
                     {
-                        "body": "> [!NOTE]\n> Originally answered by user1 on 2024-01-15\n\nSolution with images:\n![present](https://github.com/bcgov/gh-discussions-lab/blob/main/discussion_images/present.png?raw=true)\n(second image missing)",
+                        "body": "> [!NOTE]\n> Originally answered by user1 on 2024-01-15\n> It had 0 votes.\n\nSolution with images:\n![present](https://github.com/bcgov/gh-discussions-lab/blob/main/discussion_images/present.png?raw=true)\n(second image missing)",
                         "isAnswer": False
                     }
                 ]
@@ -516,9 +629,8 @@ class TestMigrationValidator(unittest.TestCase):
         
         issues = self.validator.validate_answers(so_question, gh_discussion)
         self.assertEqual(len(issues), 1)
-        self.assertIn("Missing images in answer:", issues[0])
-        self.assertIn("missing.png", issues[0])
-        self.assertNotIn("present.png", issues[0])
+        # if diagrams are not in the answer, it will be flagged as a non matching answer
+        self.assertIn("Could not find matching answer ", issues[0])
 
     def test_validate_comments_perfect_match(self):
         """Test validation when comment counts match perfectly with reply structure."""
@@ -549,16 +661,16 @@ class TestMigrationValidator(unittest.TestCase):
                 "nodes": [
                     # Question comments (top-level)
                     {
-                        "body": "> [!NOTE]\n> Originally commented on by user1 on 2024-01-15\n\nGreat question!",
+                        "body": "> [!NOTE]\n> Originally commented on by user1 on 2024-01-15.\n> It had 1 vote.\n\nGreat question!",
                         "replyTo": None
                     },
                     {
-                        "body": "> [!NOTE]\n> Originally commented on by user2 on 2024-01-15\n\nI have the same issue.",
+                        "body": "> [!NOTE]\n> Originally commented on by user2 on 2024-01-15.\n> It had 0 votes.\n\nI have the same issue.",
                         "replyTo": None
                     },
                     # Answer comments (with replies)
                     {
-                        "body": "> [!NOTE]\n> Originally answered by user3 on 2024-01-15\n\nFirst answer content",
+                        "body": "> [!NOTE]\n> Originally answered by user3 on 2024-01-15.\n> It had 0 votes.\n\nFirst answer content",
                         "replies": {
                             "nodes": [
                                 {"body": "This worked for me!"},
@@ -567,7 +679,7 @@ class TestMigrationValidator(unittest.TestCase):
                         }
                     },
                     {
-                        "body": "> [!NOTE]\n> Originally answered by user4 on 2024-01-15\n\nSecond answer content",
+                        "body": "> [!NOTE]\n> Originally answered by user4 on 2024-01-15.\n> It had 2 votes.\n\nSecond answer content",
                         "replies": {
                             "nodes": [
                                 {"body": "Alternative approach."}
@@ -603,16 +715,16 @@ class TestMigrationValidator(unittest.TestCase):
                 "nodes": [
                     # Question comments (correct)
                     {
-                        "body": "> [!NOTE]\n> Originally commented on by user1\n\nComment 1",
+                        "body": "> [!NOTE]\n> Originally commented on by user1\n> It had 0 votes.\n\nComment 1",
                         "replyTo": None
                     },
                     {
-                        "body": "> [!NOTE]\n> Originally commented on by user2\n\nComment 2",
+                        "body": "> [!NOTE]\n> Originally commented on by user2\n> It had 0 votes.\n\nComment 2",
                         "replyTo": None
                     },
                     # Answer with missing reply
                     {
-                        "body": "> [!NOTE]\n> Originally answered by user3\n\nAnswer content",
+                        "body": "> [!NOTE]\n> Originally answered by user3\n> It had 0 votes.\n\nAnswer content",
                         "replies": {
                             "nodes": []  # Missing the answer comment
                         }
@@ -668,12 +780,12 @@ class TestMigrationValidator(unittest.TestCase):
                 "nodes": [
                     # Question comment (top-level)
                     {
-                        "body": "> [!NOTE]\n> Originally commented on by user1\n\nQuestion comment",
+                        "body": "> [!NOTE]\n> Originally commented on by user1\n> It had 3 votes.\n\nQuestion comment",
                         "replyTo": None
                     },
                     # Answer with reply
                     {
-                        "body": "> [!NOTE]\n> Originally answered by user2\n\nThis is an answer, not a comment",
+                        "body": "> [!NOTE]\n> Originally answered by user2\n> It had 0 votes.\n\nThis is an answer, not a comment",
                         "replies": {
                             "nodes": [
                                 {"body": "Answer comment"}
@@ -700,7 +812,7 @@ class TestMigrationValidator(unittest.TestCase):
             "comments": {
                 "nodes": [
                     {
-                        "body": "> [!NOTE]\n> Originally commented on by user1\n\nOnly question comment",
+                        "body": "> [!NOTE]\n> Originally commented on by user1\n> It had 3 votes.\n\nOnly question comment",
                         "replyTo": None
                     }
                 ]
@@ -729,7 +841,7 @@ class TestMigrationValidator(unittest.TestCase):
             "comments": {
                 "nodes": [
                     {
-                        "body": "> [!NOTE]\n> Originally answered by user1\n\nAnswer content here",
+                        "body": "> [!NOTE]\n> Originally answered by user1\n> It had 0 votes.\n\nAnswer content here",
                         "replies": {
                             "nodes": [
                                 {"body": "Reply 1 to answer"},
@@ -762,7 +874,7 @@ class TestMigrationValidator(unittest.TestCase):
             "comments": {
                 "nodes": [
                     {
-                        "body": "> [!NOTE]\n> Originally answered by user1\n\nAnswer content",
+                        "body": "> [!NOTE]\n> Originally answered by user1\n> It had 0 votes.\n\nAnswer content",
                         # Missing "replies" key entirely
                     }
                 ]
@@ -795,12 +907,12 @@ class TestMigrationValidator(unittest.TestCase):
             "comments": {
                 "nodes": [
                     {
-                        "body": "> [!NOTE]\n> Originally commented on by user1\n\nQuestion comment 1",
+                        "body": "> [!NOTE]\n> Originally commented on by user1\n> It had 3 votes.\n\nQuestion comment 1",
                         "replyTo": None
                     },
                     # Missing second question comment
                     {
-                        "body": "> [!NOTE]\n> Originally answered by user2\n\nAnswer content",
+                        "body": "> [!NOTE]\n> Originally answered by user2\n> It had 0 votes.\n\nAnswer content",
                         "replies": {
                             "nodes": [
                                 {"body": "Answer comment 1"}
@@ -812,10 +924,11 @@ class TestMigrationValidator(unittest.TestCase):
         }
         
         issues = self.validator.validate_comments(so_question, gh_discussion)
-        self.assertEqual(len(issues), 1)
+        self.assertEqual(len(issues), 2)
         # Should include detailed breakdown
-        self.assertIn("Question comments: SO=2 vs GH=1", issues[0])
-        self.assertIn("Answer comments: SO=1 vs GH=1", issues[0])
+        self.assertIn("Could not find matching comment in GitHub for so comment id 2", issues[0])
+        self.assertIn("Question comments: SO=2 vs GH=1", issues[1])
+        self.assertIn("Answer comments: SO=1 vs GH=1", issues[1])
 
     def test_validate_comments_with_replyTo_field(self):
         """Test validation when GitHub comments have replyTo field set."""
@@ -830,7 +943,7 @@ class TestMigrationValidator(unittest.TestCase):
             "comments": {
                 "nodes": [
                     {
-                        "body": "> [!NOTE]\n> Originally commented on by user1\n\nQuestion comment",
+                        "body": "> [!NOTE]\n> Originally commented on by user1\n> It had 3 votes.\n\nQuestion comment",
                         "replyTo": None  # Top-level question comment
                     },
                     {
@@ -871,16 +984,16 @@ class TestMigrationValidator(unittest.TestCase):
                 "nodes": [
                     # Question comments
                     {
-                        "body": "> [!NOTE]\n> Originally commented on by user1\n\nQuestion comment 1",
+                        "body": "> [!NOTE]\n> Originally commented on by user1\n> It had 3 votes.\n\nQuestion comment 1",
                         "replyTo": None
                     },
                     {
-                        "body": "> [!NOTE]\n> Originally commented on by user2\n\nQuestion comment 2",
+                        "body": "> [!NOTE]\n> Originally commented on by user2\n> It had 0 votes.\n\nQuestion comment 2",
                         "replyTo": None
                     },
                     # First answer with replies
                     {
-                        "body": "> [!NOTE]\n> Originally answered by user3\n\nFirst answer content",
+                        "body": "> [!NOTE]\n> Originally answered by user3\n> It had 0 votes.\n\nFirst answer content",
                         "replies": {
                             "nodes": [
                                 {"body": "Answer 1 comment 1"},
@@ -890,7 +1003,7 @@ class TestMigrationValidator(unittest.TestCase):
                     },
                     # Second answer with no replies
                     {
-                        "body": "> [!NOTE]\n> Originally answered by user4\n\nSecond answer content",
+                        "body": "> [!NOTE]\n> Originally answered by user4\n> It had 0 votes.\n\nSecond answer content",
                         "replies": {
                             "nodes": []
                         }
@@ -902,6 +1015,93 @@ class TestMigrationValidator(unittest.TestCase):
         issues = self.validator.validate_comments(so_question, gh_discussion)
         self.assertEqual(len(issues), 0)  # 2 question + 2 answer comments = 4 total
 
+
+    def test_validate_comments_content_does_not_match(self):
+        so_question = {
+            "comments": [
+                {"comment_id": 1, "body": "Question comment 1"},
+                {"comment_id": 2, "body": "Question comment 2"}
+            ]
+        }
+        
+        # GitHub is missing one question comment
+        gh_discussion = {
+            "comments": {
+                "nodes": [
+                    {
+                        "body": "> [!NOTE]\n> Originally commented on by user1\n> It had 0 votes.\n\nQuestion",
+                        "replyTo": None
+                    },
+                   {
+                       "body": "> [!NOTE]\n> Originally commented on by user2\n> It had 0 votes.\n\nQuestion comment 2",
+                       "replyTo": None
+                   }
+                ]
+            }
+        }
+        
+        issues = self.validator.validate_comments(so_question, gh_discussion)
+        self.assertEqual(len(issues), 1)
+        # Should include detailed breakdown
+        self.assertIn("Could not find matching comment", issues[0])
+
+    def test_validate_comments_with_reply_that_does_not_match_SO_answer_comment(self):
+        so_question = {
+            "comments": [
+                {"comment_id": 1, "body": "Question comment 1"},
+                {"comment_id": 2, "body": "Question comment 2"}
+            ],
+            "answers": [
+                {
+                    "answer_id": 1,
+                    "comments": [
+                        {"comment_id": 3, "body": "Answer 1 comment 1"},
+                        {"comment_id": 4, "body": "Answer 1 comment 2"}
+                    ]
+                },
+                {
+                    "answer_id": 2,
+                    "comments": []  # Answer with no comments
+                }
+            ]
+        }
+        
+        gh_discussion = {
+            "comments": {
+                "nodes": [
+                    # Question comments
+                    {
+                        "body": "> [!NOTE]\n> Originally commented on by user1\n> It had 3 votes.\n\nQuestion comment 1",
+                        "replyTo": None
+                    },
+                    {
+                        "body": "> [!NOTE]\n> Originally commented on by user2\n> It had 0 votes.\n\nQuestion comment 2",
+                        "replyTo": None
+                    },
+                    # First answer with replies
+                    {
+                        "body": "> [!NOTE]\n> Originally answered by user3\n> It had 0 votes.\n\nFirst answer content",
+                        "replies": {
+                            "nodes": [
+                                {"body": "Answer 1 comment 1"},
+                                {"body": "Answer 1 comment 8"}
+                            ]
+                        }
+                    },
+                    # Second answer with no replies
+                    {
+                        "body": "> [!NOTE]\n> Originally answered by user4\n> It had 0 votes.\n\nSecond answer content",
+                        "replies": {
+                            "nodes": []
+                        }
+                    }
+                ]
+            }
+        }
+        
+        issues = self.validator.validate_comments(so_question, gh_discussion)
+        self.assertEqual(len(issues), 1)  
+        self.assertIn("Could not find matching comment", issues[0])
 
 class TestIgnoredTagsFunctionality(unittest.TestCase):
     """Unit tests for the ignored tags functionality."""

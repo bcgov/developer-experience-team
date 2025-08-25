@@ -11,7 +11,7 @@ from populate_discussion import (
 import duckdb as dd
 from rapidfuzz import fuzz
 
-DEFAULT_TEXT_SIMILARITY_PERCENTAGE = 90
+DEFAULT_TEXT_SIMILARITY_PERCENTAGE = 95
 
 # Configure logging only if no handlers are already set up
 if not logging.getLogger().handlers:
@@ -230,56 +230,30 @@ class MigrationValidator:
         # Check if accepted answer is marked correctly
         accepted_answer_id = so_question.get('accepted_answer_id')
         gh_accepted_answers = [c for c in gh_discussion['comments']['nodes'] if c['isAnswer']]
-        
+
         if accepted_answer_id and len(gh_accepted_answers) != 1:
             issues.append(f"Accepted answer not properly marked in GitHub")
         elif not accepted_answer_id and len(gh_accepted_answers) > 0:
             issues.append(f"GitHub has accepted answer but SO doesn't")
-        
+
         # Check answer content and images
         for so_answer in so_answers:
             so_answer_body = decode_html_entities(so_answer.get('body_markdown', so_answer.get('body', '')))
             so_answer_normalized = normalize_image_urls(so_answer_body)
             so_answer_images = extract_image_filenames(so_answer_body)
             
-            # Find matching GitHub comment using a more flexible approach
             matching_gh_comment = None
             
-            # First, try to find exact normalized match (with whitespace normalization)
             for gh_comment in gh_comments:
                 gh_comment_normalized = normalize_image_urls(gh_comment['body'])
+                gh_comment_normalized = self.extract_content_without_header(gh_comment_normalized).strip()
 
-                # Normalize whitespace for comparison
-                so_normalized_clean = ' '.join(so_answer_normalized.split())
-                gh_normalized_clean = ' '.join(gh_comment_normalized.split())
-                
-                if so_normalized_clean in gh_normalized_clean:
+
+                if self._validate_content_match(so_answer_normalized, gh_comment_normalized, so_question.get('title', '')):
                     matching_gh_comment = gh_comment
+                    if not matching_gh_comment['isAnswer'] == so_answer['is_accepted']:
+                        issues.append(f"GitHub and SO have different accepted answers - {so_question.get('title', '')}")
                     break
-            
-            # If no exact match, try to find best match by text content (excluding images)
-            if not matching_gh_comment:
-                # Remove image syntax from both texts for comparison
-                so_text_only = re.sub(r'!\[[^\]]*\]\([^)]+\)', '', so_answer_body)
-                so_text_only = re.sub(r'<img [^>]*>', '', so_text_only)
-                so_text_only = so_text_only.strip()
-                
-                best_match_score = 0
-                for gh_comment in gh_comments:
-                    # Extract just the text content from GitHub comment (after header)
-                    gh_body = gh_comment['body']
-                    # Remove the "Originally answered by" header
-                    gh_text_content = self.extract_content_without_header(gh_body)
-                    
-                    # Remove image syntax from GitHub text
-                    gh_text_only = re.sub(r'!\[[^\]]*\]\([^)]+\)', '', gh_text_content)
-                    gh_text_only = re.sub(r'<img [^>]*>', '', gh_text_only)
-                    gh_text_only = gh_text_only.strip()
-                    
-                    # Simple text similarity check
-                    if so_text_only and gh_text_only and so_text_only in gh_text_only:
-                        matching_gh_comment = gh_comment
-                        break
             
             if matching_gh_comment:
                 # Check if all images are present
@@ -295,18 +269,8 @@ class MigrationValidator:
         return issues
 
     def extract_content_without_header(self, gh_text: str) -> str:
-        if "> [!NOTE]" in gh_text:
-            lines = gh_text.split('\n')
-            content_lines = []
-            skip_header = True
-            for line in lines:
-                if skip_header and (line.startswith('>') or line.strip() == ''):
-                    continue
-                skip_header = False
-                content_lines.append(line)
-            gh_text_content = '\n'.join(content_lines)
-        else:
-            gh_text_content = gh_text
+        pattern = r"> \[!NOTE\]\n> Originally.*\n> It had .*\n\n"
+        gh_text_content = re.sub(pattern, "", gh_text)
         return gh_text_content
 
     def validate_comments(self, so_question: Dict, gh_discussion: Dict) -> List[str]:
@@ -319,15 +283,29 @@ class MigrationValidator:
         issues = []
         
         # Count SO comments (question + answer comments)
-        so_question_comments = len(so_question.get('comments', []))
+        so_question_comments = so_question.get('comments', [])
         so_answer_comments = sum(len(answer.get('comments', [])) for answer in so_question.get('answers', []))
-        total_so_comments = so_question_comments + so_answer_comments
+        total_so_comments = len(so_question_comments) + so_answer_comments
         
         # Count GH comments and replies
         # Question comments become top-level comments with 'Originally commented on by' in body
         gh_question_comments = [c for c in gh_discussion['comments']['nodes'] 
                                if 'Originally commented on by' in c['body'] and not c.get('replyTo')]
         
+        # Don't worry about images because SO comments can't have images in them.
+        for so_question_comment in so_question_comments:
+            comment_body = decode_html_entities(so_question_comment.get('body', so_question_comment.get('body_markdown', '')))
+            matching_gh_comment = None
+            for gh_comment in gh_question_comments:
+                gh_comment_normalized = self.extract_content_without_header(gh_comment['body']).strip()
+                if self._validate_content_match(comment_body, gh_comment_normalized, so_question.get('title', '')):
+                    matching_gh_comment = gh_comment
+                    break
+            
+            if not matching_gh_comment:
+                issues.append(f"Could not find matching comment in GitHub for so comment id {so_question_comment.get('comment_id', 'unknown')}")
+
+
         # Answer comments become replies to answer comments (with 'Originally answered by')
         gh_answer_replies = []
         for comment in gh_discussion['comments']['nodes']:
@@ -335,11 +313,24 @@ class MigrationValidator:
                 # This is an answer comment, check its replies
                 replies = comment.get('replies', {}).get('nodes', [])
                 gh_answer_replies.extend(replies)
-        
+
+        for reply in gh_answer_replies:
+            reply_body = decode_html_entities(reply.get('body', reply.get('body_markdown', '')))
+            normalize_reply_body = self.extract_content_without_header(reply_body).strip()
+            matching_so_answer_comment = None
+            for so_answer_comment in (comment for so_answer in so_question.get('answers', []) for comment in so_answer.get('comments', [])):
+                so_answer_comment_body = decode_html_entities(so_answer_comment.get('body', so_answer_comment.get('body_markdown', '')))
+                if self._validate_content_match(so_answer_comment_body, normalize_reply_body, so_question.get('title', '')):
+                    matching_so_answer_comment = so_answer_comment
+                    break
+
+            if not matching_so_answer_comment:
+                issues.append(f"Could not find matching comment on answer in GitHub for so comment id {so_answer_comment.get('comment_id', 'unknown')}")
+
         total_gh_comments = len(gh_question_comments) + len(gh_answer_replies)
         
         if total_so_comments != total_gh_comments:
-            issues.append(f"Comment count mismatch: SO={total_so_comments} vs GH={total_gh_comments} (Question comments: SO={so_question_comments} vs GH={len(gh_question_comments)}, Answer comments: SO={so_answer_comments} vs GH={len(gh_answer_replies)})")
+            issues.append(f"Comment count mismatch: SO={total_so_comments} vs GH={total_gh_comments} (Question comments: SO={len(so_question_comments)} vs GH={len(gh_question_comments)}, Answer comments: SO={so_answer_comments} vs GH={len(gh_answer_replies)})")
         
         return issues
 
@@ -537,7 +528,7 @@ def main():
     parser.add_argument('--text-similarity-percentage',
                         type=int,
                         default=DEFAULT_TEXT_SIMILARITY_PERCENTAGE,
-                        help='The minimum text similarity percentage between SO and GHD content to be considered the same. (default=90)')
+                        help=f'The minimum text similarity percentage between SO and GHD content to be considered the same. (default={DEFAULT_TEXT_SIMILARITY_PERCENTAGE})')
 
     args = parser.parse_args()
 
