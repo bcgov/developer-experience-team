@@ -12,7 +12,8 @@ from populate_discussion import (
     get_tags_at_or_above_threshold,
     format_header_data,
     MetaAction,
-    is_popular
+    is_popular,
+    _escape_user_mentions
 )
 
 class TestIsPopular(unittest.TestCase):
@@ -983,6 +984,150 @@ class TestGetTagsAtOrAboveThreshold(unittest.TestCase):
         expected_names = ["keycloak", "api-gateway", "microservices"]
         actual_names = [tag["name"] for tag in result]
         self.assertEqual(actual_names, expected_names)
+
+
+class TestEscapeUserMentions(unittest.TestCase):
+    """Unit tests for the _escape_user_mentions function."""
+
+    def test_escape_basic_mention(self):
+        """Test escaping a basic mention in regular text."""
+        input_text = "Thanks for the tip @marco1, it worked great!"
+        expected = "Thanks for the tip `@marco1`, it worked great!"
+        result = _escape_user_mentions(input_text)
+        self.assertEqual(result, expected)
+
+    def test_preserve_mention_in_fenced_code_block(self):
+        """Test that mentions inside fenced code blocks are not escaped."""
+        input_text = "```code is in here @jill_bob```"
+        expected = "```code is in here @jill_bob```"
+        result = _escape_user_mentions(input_text)
+        self.assertEqual(result, expected)
+
+    def test_preserve_mention_in_inline_code(self):
+        """Test that mentions inside inline code are not escaped."""
+        input_text = "Use the `@jill_bob` variable in your code."
+        expected = "Use the `@jill_bob` variable in your code."
+        result = _escape_user_mentions(input_text)
+        self.assertEqual(result, expected)
+
+    def test_mixed_content_escape_and_preserve(self):
+        """Test escaping mentions in text while preserving those in code blocks."""
+        input_text = "Hey @alice, check out this code: ```@bob is in here``` and let me know!"
+        expected = "Hey `@alice`, check out this code: ```@bob is in here``` and let me know!"
+        result = _escape_user_mentions(input_text)
+        self.assertEqual(result, expected)
+
+    def test_multiple_mentions_in_text(self):
+        """Test escaping multiple mentions in regular text."""
+        input_text = "Thanks @user1 and @user2 for the help!"
+        expected = "Thanks `@user1` and `@user2` for the help!"
+        result = _escape_user_mentions(input_text)
+        self.assertEqual(result, expected)
+
+    def test_already_escaped_mention_unchanged(self):
+        """Test that already escaped mentions remain unchanged."""
+        input_text = "The `@username` variable is important."
+        expected = "The `@username` variable is important."
+        result = _escape_user_mentions(input_text)
+        self.assertEqual(result, expected)
+
+    def test_multiline_fenced_code_block(self):
+        """Test that mentions in multi-line fenced code blocks are preserved."""
+        input_text = "Here's some code:\n```\n@variable = 'test'\nprint(@variable)\n```\nThanks @helper!"
+        expected = "Here's some code:\n```\n@variable = 'test'\nprint(@variable)\n```\nThanks `@helper`!"
+        result = _escape_user_mentions(input_text)
+        self.assertEqual(result, expected)
+
+    def test_empty_string(self):
+        """Test handling of empty string."""
+        input_text = ""
+        expected = ""
+        result = _escape_user_mentions(input_text)
+        self.assertEqual(result, expected)
+
+    def test_no_mentions(self):
+        """Test text without any mentions."""
+        input_text = "This is just regular text without any mentions."
+        expected = "This is just regular text without any mentions."
+        result = _escape_user_mentions(input_text)
+        self.assertEqual(result, expected)
+
+    def test_mention_at_start_of_string(self):
+        """Test mention at the beginning of the string."""
+        input_text = "@user thanks for the help!"
+        expected = "`@user` thanks for the help!"
+        result = _escape_user_mentions(input_text)
+        self.assertEqual(result, expected)
+
+    def test_mention_at_end_of_string(self):
+        """Test mention at the end of the string."""
+        input_text = "Great work @user"
+        expected = "Great work `@user`"
+        result = _escape_user_mentions(input_text)
+        self.assertEqual(result, expected)
+
+    def test_multiple_inline_code_blocks(self):
+        """Test multiple inline code blocks with mentions."""
+        input_text = "Use `@var1` and `@var2` but thanks @user for the tip!"
+        expected = "Use `@var1` and `@var2` but thanks `@user` for the tip!"
+        result = _escape_user_mentions(input_text)
+        self.assertEqual(result, expected)
+
+    def test_nested_backticks_in_fenced_block(self):
+        """Test fenced code block containing backticks."""
+        input_text = "```\nconst user = `@${username}`;\n@helper function\n```\nThanks @developer!"
+        expected = "```\nconst user = `@${username}`;\n@helper function\n```\nThanks `@developer`!"
+        result = _escape_user_mentions(input_text)
+        self.assertEqual(result, expected)
+
+    def test_mention_with_numbers_and_underscores(self):
+        """Test mentions with numbers and underscores in username."""
+        input_text = "Thanks @user_123 and @test2user for help!"
+        expected = "Thanks `@user_123` and `@test2user` for help!"
+        result = _escape_user_mentions(input_text)
+        self.assertEqual(result, expected)
+
+    def test_incomplete_mention_not_escaped(self):
+        """Test that incomplete mentions (@ without username) are not escaped."""
+        input_text = "Email me @ john.doe@example.com or contact @validuser"
+        expected = "Email me @ john.doe@example.com or contact `@validuser`"
+        result = _escape_user_mentions(input_text)
+        self.assertEqual(result, expected)
+
+    def test_complex_mixed_content(self):
+        """Test complex content with multiple code blocks and mentions."""
+        input_text = """
+        Hey @alice, here's the code:
+        ```python
+        @decorator
+        def func(@param):
+            user = "@system"
+            return user
+        ```
+        
+        Also check this `@constant` and let @bob know!
+        
+        ```
+        @another_mention
+        ```
+        """
+        expected = """
+        Hey `@alice`, here's the code:
+        ```python
+        @decorator
+        def func(@param):
+            user = "@system"
+            return user
+        ```
+        
+        Also check this `@constant` and let `@bob` know!
+        
+        ```
+        @another_mention
+        ```
+        """
+        result = _escape_user_mentions(input_text)
+        self.assertEqual(result, expected)
 
 
 if __name__ == '__main__':

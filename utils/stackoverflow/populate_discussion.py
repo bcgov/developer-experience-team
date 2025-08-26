@@ -3,6 +3,7 @@ import os
 import logging
 import argparse
 from github import Github, Auth
+from github.Repository import Repository
 from github.GithubException import GithubException
 from typing import Dict, List, Any, Optional
 import re
@@ -628,6 +629,41 @@ def format_header_data(json_data: Dict[str, Any], action: MetaAction, id_mapping
     return f"> [!NOTE]\n> Originally {action.value} by {formatted_author} on {formatted_creation_date} in BC Gov Stack Overflow.\n" + \
            f"> It had {score} {vote_label}.\n\n"
 
+def _escape_user_mentions(body: str) -> str:
+    """Escape mentions in the body text when it is not part of a code block."""
+    if not body:
+        return body
+    
+    # Split text into segments, preserving code blocks
+    # This regex matches:
+    # - Fenced code blocks: ```...``` (can span multiple lines)
+    # - Inline code: `...`
+    code_block_pattern = r'(```[\s\S]*?```|`[^`\n]*?`)'
+    
+    # Split text by code blocks, keeping the delimiters
+    segments = re.split(code_block_pattern, body)
+    
+    result = []
+    for i, segment in enumerate(segments):
+        # Even indices are regular text, odd indices are code blocks
+        if i % 2 == 0:  # Regular text
+            # (?<!\S) ensures there's no non-whitespace character before the @ this is likely an email address
+            # @(\w+)\b ensures we match whole words starting with @
+            escaped_segment = re.sub(r'(?<!\S)@(\w+)\b', r'`@\1`', segment)
+            result.append(escaped_segment)
+        else:  # Code block - leave unchanged
+            result.append(segment)
+    
+    return ''.join(result)
+
+def get_body(owner: str, name: str, repo: Repository, id_mapping: Optional[Dict[str, str]], local_image_folder: str, so_json: Dict[str, Any], action: MetaAction) -> str:
+    body = decode_html_entities(so_json.get('body_markdown', so_json.get('body', '')))
+    body = process_image_fields(body, local_image_folder, owner, name, repo, logger)
+    body = _escape_user_mentions(body)
+    header = format_header_data(so_json, action, id_mapping)
+    body = header + body
+    return body.strip()
+
 def main():
     # Setup logging for this script
     setup_populate_discussion_logging()
@@ -772,22 +808,7 @@ def main():
             if is_popular(question, args.popular_tag_min_threshold):
                 tags.append(POPULAR_TAG_NAME)
 
-            body = question.get('body', '')
-
-            # Use body_markdown if available, fall back to body_html or just body
-            if 'body_markdown' in question:
-                body = question['body_markdown']
-            elif 'body_html' in question:
-                body = question['body_html']
-
-            # Decode HTML entities
-            body = decode_html_entities(body)
-
-            # --- IMAGE HANDLING FOR QUESTION BODY ---
-            body = process_image_fields(body, local_image_folder, owner, name, repo, logger)
-
-            header = format_header_data(question, MetaAction.ASKED, id_mapping)
-            body = header + body
+            body = get_body(owner, name, repo, id_mapping, local_image_folder, question, MetaAction.ASKED)
 
             # Sort comments by creation_date (chronological order)
             question_comments = question.get('comments', [])
@@ -815,11 +836,7 @@ def main():
 
             # Add question comments (chronological order)
             for comment in question_comments_sorted:
-                comment_body = decode_html_entities(comment.get('body', ''))
-                # --- IMAGE HANDLING FOR QUESTION COMMENT ---
-                comment_body = process_image_fields(comment_body, local_image_folder, owner, name, repo, logger)
-                comment_header = format_header_data(comment, MetaAction.COMMENTED, id_mapping)
-                comment_body = comment_header + comment_body
+                comment_body = get_body(owner, name, repo, id_mapping, local_image_folder, comment, MetaAction.COMMENTED)
                 _, github_comment_url = add_comment(github_graphql, owner, name, discussion_number, comment_body)
                 # comments don't have a share link
                 log_url_mapping([comment.get(SO_LINK)], github_comment_url) 
@@ -830,25 +847,7 @@ def main():
             answers_sorted = sorted(answers, key=lambda a: a.get('creation_date', 0))
             answer_id_to_comment_id = {}
             for answer in answers_sorted:
-                answer_body = answer.get('body', '')
-
-                # Use body_markdown if available, fall back to body_html
-                if 'body_markdown' in answer:
-                    answer_body = answer['body_markdown']
-                elif 'body_html' in answer:
-                    answer_body = answer['body_html']
-
-                # Decode HTML entities
-                answer_body = decode_html_entities(answer_body)
-
-                # --- IMAGE HANDLING FOR ANSWER BODY ---
-                answer_body = process_image_fields(answer_body, local_image_folder, owner, name, repo, logger)
-
-               
-                answer_header = format_header_data(answer, MetaAction.ANSWERED, id_mapping)
-
-                # Remove accepted answer header from body (handled by API now)
-                answer_body = answer_header + answer_body
+                answer_body = get_body(owner, name, repo, id_mapping, local_image_folder, answer, MetaAction.ANSWERED)
 
                 comment_id, comment_url = add_comment(github_graphql, owner, name, discussion_number, answer_body)
                 if comment_id and 'answer_id' in answer:
@@ -861,14 +860,7 @@ def main():
 
                 # Also add any comments on the answer
                 for comment in answer.get('comments', []):
-                    comment_body = decode_html_entities(comment.get('body', ''))
-
-                    # --- IMAGE HANDLING FOR ANSWER COMMENT ---
-                    comment_body = process_image_fields(comment_body, local_image_folder, owner, name, repo, logger)
-
-
-                    comment_header = format_header_data(comment, MetaAction.COMMENTED, id_mapping)
-                    comment_body = comment_header + comment_body
+                    comment_body = get_body(owner, name, repo, id_mapping, local_image_folder, comment, MetaAction.COMMENTED)
 
                     _, github_comment_url = add_comment(github_graphql, owner, name, discussion_number, comment_body, comment_id)
                     # comments don't have a share link
