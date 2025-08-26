@@ -294,7 +294,7 @@ class MigrationValidator:
         
         # Don't worry about images because SO comments can't have images in them.
         for so_question_comment in so_question_comments:
-            comment_body = decode_html_entities(so_question_comment.get('body', so_question_comment.get('body_markdown', '')))
+            comment_body = decode_html_entities(so_question_comment.get('body_markdown', so_question_comment.get('body', '')))
             matching_gh_comment = None
             for gh_comment in gh_question_comments:
                 gh_comment_normalized = self.extract_content_without_header(gh_comment['body']).strip()
@@ -319,13 +319,13 @@ class MigrationValidator:
             normalize_reply_body = self.extract_content_without_header(reply_body).strip()
             matching_so_answer_comment = None
             for so_answer_comment in (comment for so_answer in so_question.get('answers', []) for comment in so_answer.get('comments', [])):
-                so_answer_comment_body = decode_html_entities(so_answer_comment.get('body', so_answer_comment.get('body_markdown', '')))
+                so_answer_comment_body = decode_html_entities(so_answer_comment.get('body_markdown', so_answer_comment.get('body', '')))
                 if self._validate_content_match(so_answer_comment_body, normalize_reply_body, so_question.get('title', '')):
                     matching_so_answer_comment = so_answer_comment
                     break
 
             if not matching_so_answer_comment:
-                issues.append(f"Could not find matching comment on answer in GitHub for so comment id {so_answer_comment.get('comment_id', 'unknown')}")
+                issues.append(f"Could not find matching comment on answer in GitHub and SO for GitHub id {reply.get('id', 'unknown')} body: {reply.get('body_markdown', reply.get('body', ''))}")
 
         total_gh_comments = len(gh_question_comments) + len(gh_answer_replies)
         
