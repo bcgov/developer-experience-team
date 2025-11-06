@@ -22,3 +22,4 @@ spec:
         - https://github.com/bcgov/citz-imb-express-utilities/blob/main/catalog-info.yaml
         - https://github.com/bcgov/DITP/blob/main/catalog-info.yaml
         - https://github.com/bcgov/developer-portal/blob/main/catalog-info.yaml # don't need to promote to test or prod
+        - https://github.com/bcgov/event-stream-service-techdocs/blob/main/catalog-info.yml
