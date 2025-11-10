@@ -1,8 +1,10 @@
 *.json
-so_exported_images/
+so_exported_images*/
 *.pem
 __pycache__/
 *.log
 validation_report.md
 *.txt
 *.bak
+so_exported_images.zip
+so_extract.zip

@@ -40,6 +40,12 @@ class TestImageHandling(unittest.TestCase):
         normalized = normalize_image_urls(text)
         self.assertEqual(normalized, "![screenshot](IMAGE:3545-sdfkb-adf2.png)")
 
+    def test_normalize_image_link_urls_markdown(self):
+        """Test normalizing markdown image URLs."""
+        text = "[![enter image description here](https://stackoverflow.developer.gov.bc.ca/images/a/3545-sdfkb-adf2.png)](https://stackoverflow.developer.gov.bc.ca/images/a/3545-sdfkb-adf2.png)"
+        normalized = normalize_image_urls(text)
+        self.assertEqual(normalized, "[![enter image description here](IMAGE:IMAGE:3545-sdfkb-adf2.png)](IMAGE:3545-sdfkb-adf2.png)")
+
     def test_normalize_image_urls_html(self):
         """Test normalizing HTML image URLs."""
         text = '<img src="https://github.com/bcgov/repo/blob/main/discussion_images/test-image.jpg?raw=true" alt="test">'
@@ -54,7 +60,7 @@ class TestImageHandling(unittest.TestCase):
         
         so_normalized = normalize_image_urls(so_text)
         gh_normalized = normalize_image_urls(gh_text)
-        
+
         self.assertEqual(so_normalized, gh_normalized)
 
 

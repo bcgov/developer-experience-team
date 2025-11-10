@@ -46,12 +46,26 @@ def normalize_image_urls(text: str) -> str:
         return text
     
     # Replace markdown images ![alt](url) with ![alt](IMAGE_PLACEHOLDER)
-    def replace_md_image(match):
+    def md_img_repl(match):
+        url = match.group(2)
+        filename = url.split('/')[-1].split('?')[0]  # Get filename without query params
+        return match.group(0).replace(url, f"IMAGE:{filename}")
+
+    def md_link_repl(match):
         alt_text = match.group(1)
         url = match.group(2)
         filename = url.split('/')[-1].split('?')[0]  # Get filename without query params
+        return match.group(0).replace(url, f"IMAGE:{filename}").replace(url, f"IMAGE:{filename}")
+
+    def replace_md_image(match):
+        num_groups = len(match.groups())
+        alt_text = match.group(1)
+        url = match.group(2)
+        filename = url.split('/')[-1].split('?')[0]  # Get filename without query params
+        if num_groups == 3:
+            return f"![{alt_text}](IMAGE:{filename})(IMAGE:{filename})"
         return f"![{alt_text}](IMAGE:{filename})"
-    
+
     # Replace HTML images <img src="url"> with <img src="IMAGE_PLACEHOLDER">
     def replace_html_image(match):
         before_src = match.group(1)  # Everything before the URL in src attribute
@@ -59,9 +73,19 @@ def normalize_image_urls(text: str) -> str:
         after_src = match.group(3)  # Everything after the URL in src attribute
         filename = url.split('/')[-1].split('?')[0]  # Get filename without query params
         return f"<img {before_src}IMAGE:{filename}{after_src}"
-    
+
+    # match = re.search(r'!\[([^\]]*)\]\(([^)]+)\)', text)
+    # if match:
+    #     url = match.group(2)
+    #     filename = url.split('/')[-1].split('?')[0]  # Get filename without query params
+    #     alt_text = match.group(1)
+    #     print(f"Matched markdown image: alt='{alt_text}', url='{url}' filename='{filename}'")
+    #     print(f"match group 0: {match.group(0)}")
+    # else:
+    #     print("No match")
     # Apply replacements
-    text = re.sub(r'!\[([^\]]*)\]\(([^)]+)\)', replace_md_image, text)
+    text = re.sub(r'!\[([^\]]*)\]\(([^)]+)\)\]\(([^)]+)\)', md_link_repl, text)
+    text = re.sub(r'!\[([^\]]*)\]\(([^)]+)\)', md_img_repl, text) 
     text = re.sub(r'<img ([^>]*src=["\'])([^"\'>]+)(["\'][^>]*>)', replace_html_image, text)
     
     return text
@@ -213,7 +237,7 @@ class MigrationValidator:
 
         similarity = fuzz.ratio(so_text, gh_text)
         if similarity < self.text_similarity_percentage:
-            logger.info(f"Under content similarity for - {title} - similarity was: {similarity}%")
+            logger.debug(f"Under content similarity for - {title} - similarity was: {similarity}%")
         return similarity >= self.text_similarity_percentage
 
     def validate_answers(self, so_question: Dict, gh_discussion: Dict) -> List[str]:

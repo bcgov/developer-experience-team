@@ -371,10 +371,10 @@ def clean_repo_discussions(github_graphql, owner: str, name: str, category: Opti
 def extract_image_urls(text):
     """Extract image URLs from markdown and HTML image tags."""
     # Markdown: ![alt](url)
-    md_pattern = r'!\[[^\]]*\]\(([^)]+)\)'
+    md_img_pattern = r'!\[[^\]]*\]\(([^)]+)\)'
     # HTML: <img src="url" ...>
     html_pattern = r'<img [^>]*src=["\']([^"\'>]+)["\']'
-    urls = re.findall(md_pattern, text or '')
+    urls = re.findall(md_img_pattern, text or '')
     urls += re.findall(html_pattern, text or '')
     return urls
 
@@ -401,14 +401,22 @@ def commit_image_to_repo(repo, local_path):
 
 def replace_image_urls(text, url_map):
     """Replace image URLs in markdown/html with new repo paths."""
-    def md_repl(match):
+    def md_img_repl(match):
         url = match.group(1)
         return match.group(0).replace(url, url_map.get(url, url))
     def html_repl(match):
         url = match.group(1)
         return match.group(0).replace(url, url_map.get(url, url))
-    text = re.sub(r'!\[[^\]]*\]\(([^)]+)\)', md_repl, text or '')
+    # markdown link replacer: [](url), but not images
+    def md_link_repl(match):
+        url1 = match.group(1)
+        url2 = match.group(2)
+        return match.group(0).replace(url1, url_map.get(url1, url1)).replace(url2, url_map.get(url2, url2))
+
+    text = re.sub(r'!\[[^\]]*\]\(([^)]+)\)', md_img_repl, text or '')
     text = re.sub(r'<img [^>]*src=["\']([^"\'>]+)["\']', html_repl, text)
+     # This MUST run after markdown image replacement
+    text = re.sub(r'(?<!!)\[[^\]]*\]\(([^)]+)\)\]\(([^)]+)\)', md_link_repl, text)
     return text
 
 def decode_html_entities(text: str) -> str:
