@@ -720,6 +720,7 @@ def main():
     # Set the global API delay based on user preference
     rate_limiter = RateLimiter(min_interval=args.api_delay)
     logger.info(f"Using API delay of {args.api_delay} seconds between requests")
+    logger.info(f"Will process into repository: {args.repo}")
 
     SO_LINK = "link"
     SO_SHARE_LINK = "share_link"
@@ -741,6 +742,7 @@ def main():
         raise ValueError("Repository must be in format 'owner/name'")
 
     owner, name = repo_parts
+    logger.info(f"Accessing repository: {owner}/{name}")
     repo = github_client.get_repo(f"{owner}/{name}")
 
     logger.info(f"Using repo '{repo.full_name}'")
