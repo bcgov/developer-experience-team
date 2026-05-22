@@ -1,13 +1,13 @@
 {
-  "originHash" : "4ad98ec045a03121506e120274acd6f2acbcbec17167a0704b0f83fa991296a0",
+  "originHash" : "a452799b391e943d8787571902474b64486003c2b440dbdafbda6dbb9e7662b7",
   "pins" : [
     {
       "identity" : "appstoreconnect-swift-sdk",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/AvdLee/appstoreconnect-swift-sdk.git",
       "state" : {
-        "revision" : "60bbc198c8d9f9992807bfebef86f45d6173a1f1",
-        "version" : "3.7.1"
+        "revision" : "cbc9b7f0ef2b38cd66a53e885ad47c1c483c4b72",
+        "version" : "4.3.0"
       }
     },
     {
@@ -20,12 +20,21 @@
       }
     },
     {
+      "identity" : "swift-asn1",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-asn1.git",
+      "state" : {
+        "revision" : "eb50cbd14606a9161cbc5d452f18797c90ef0bab",
+        "version" : "1.7.0"
+      }
+    },
+    {
       "identity" : "swift-crypto",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-crypto.git",
       "state" : {
-        "revision" : "60f13f60c4d093691934dc6cfdf5f508ada1f894",
-        "version" : "2.6.0"
+        "revision" : "95ba0316a9b733e92bb6b071255ff46263bbe7dc",
+        "version" : "3.15.1"
       }
     },
     {

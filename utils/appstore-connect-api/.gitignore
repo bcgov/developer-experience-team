@@ -8,3 +8,4 @@ DerivedData/
 .netrc
 *.p8
 env/
+.env
