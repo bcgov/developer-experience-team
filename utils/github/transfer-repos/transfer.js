@@ -11,6 +11,7 @@ const destinationPAT = process.env.GITHUB_TOKEN_DESTINATION;
 const destinationOrgName = process.env.ORG_NAME_DESTINATION;
 const sourceOrgName = process.env.ORG_NAME_SOURCE;
 const repo_file = process.env.REPO_FILE;
+const assignTeams = process.argv.includes("--assign-teams");
 
 const execPromise = promisify(exec);
 
@@ -33,6 +34,10 @@ const octokitDestination = new Octokit({
 });
 
 async function getTeamIds(teamNames) {
+  if (!teamNames || !teamNames.trim()) {
+    throw new Error("TEAMS field is empty");
+  }
+
   const teams = teamNames.split(" ");
   let teamIds = [];
 
@@ -62,15 +67,15 @@ function formatTeamSyntaxForQuery(teamIds) {
   return syntax;
 }
 
-async function transferRepo(repoName, teamIds) {
+async function transferRepo(repoName, teamIds=[]) {
   console.log(`transferring repo ${repoName}`);
-  const teamSyntax = formatTeamSyntaxForQuery(teamIds);
+  const teamSyntax = teamIds.length > 0 ? formatTeamSyntaxForQuery(teamIds) : "";
   const { err, stdout, stderr } = await execPromise(
     `gh api --method POST -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /repos/${sourceOrgName}/${repoName}/transfer -f new_owner=${destinationOrgName} ${teamSyntax}`
   );
 
   if (err) {
-    console.err(err);
+    console.error(err);
     throw err;
   }
 
@@ -85,13 +90,19 @@ async function transferRepos() {
 
   for await (const data of stream) {
     try {
-      let teamIds = await getTeamIds(data.TEAMS); 
-
-      if (teamIds.length > 0) {
-        await transferRepo(data.REPO, teamIds); 
-      } else {
-        throw new Error(`Could not find teamIds for ${data.REPO}`);
+      if(assignTeams && !data.TEAMS) {
+        throw new Error(`Repo ${data.REPO} is missing team assignments`);
+      } else if(assignTeams) {
+        const teamIds = await getTeamIds(data.TEAMS);
+        if(teamIds.length > 0) {
+          await transferRepo(data.REPO, teamIds);
+        } else {
+           throw new Error(`Could not find teamIds for ${data.REPO}`);
+        }
+      }else {
+        await transferRepo(data.REPO);
       }
+      
     } catch (error) {
       console.error(`Error processing ${data.REPO}. Error: ${error.message}`);
     }
