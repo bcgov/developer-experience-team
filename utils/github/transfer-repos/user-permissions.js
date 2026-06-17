@@ -39,7 +39,9 @@ function parseRepoUrl(rawUrl) {
     throw new Error("REPO is not a valid URL");
   }
 
-  if (!parsed.hostname.toLowerCase().endsWith("github.com")) {
+  const hostname = parsed.hostname.toLowerCase();
+  const allowedHosts = new Set(["github.com", "www.github.com"]);
+  if (!allowedHosts.has(hostname)) {
     throw new Error("REPO must be a GitHub URL");
   }
 
