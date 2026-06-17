@@ -12,11 +12,11 @@ An `.env` file with the following keys is required:
 
 The [GitHub cli](https://cli.github.com) must also be installed.
 
-This repo has two scripts in it:
+This repo has three scripts in it:
 
 ## transfer.js 
 
-This script transfers a repo from one org to another. It assigns teams as part of the transfer. But the teams will only have read access.
+This script transfers a repo from one org to another. Provide the `--assign-team` flag to assign teams as part of the transfer. Note the teams will only have read access.
 
 Run the script with:
 
@@ -24,7 +24,17 @@ Run the script with:
 npm run transfer
 ```
 
-Example input file:
+Example input file without `--assign-team`:
+
+```
+REPO
+repo-1
+repo-2
+```
+NOTE: If team is provided, it will be ignored
+
+
+Example input file when `--assign-team` is provided:
 
 ```
 REPO,TEAMS
@@ -59,6 +69,38 @@ test-repo-130,test-team,admin
 test-repo-129,developer-experience,admin
 test-repo-128,developer-experience,admin
 test-repo-127,test-team,admin
+```
+
+## user-permissions.js
+
+Token permissions needed: repo Read and Write access to administration
+
+This script updates user permissions on repositories. It accepts a CSV file with the columns:
+
+If multiple users need access to a repo, then a seperate row will be needed for each user.
+
+```
+REPO,USER,ACCESS
+```
+
+Where:
+
+* `REPO` is the full GitHub repository URL (for example `https://github.com/bcgov/my-repo`)
+* `USER` is the GitHub username
+* `ACCESS` is one of `pull`, `push`, `admin`, `maintain`, or `triage`
+
+If a row contains an invalid repository URL, user, or inaccessible repo, the script logs the issue and continues to the next row.
+
+Run the script with:
+
+```
+npm run user-permissions -- ./path/to/user-access.csv
+```
+
+You can also set `USER_ACCESS_FILE` in your `.env` file and run:
+
+```
+npm run user-permissions
 ```
 
 
