@@ -75,9 +75,14 @@ test-repo-127,test-team,admin
 
 Token permissions needed: repo Read and Write access to administration
 
+Env variables needed:
+
+* `ORG_NAME_DESTINATION` = the org where the repo(s) reside
+* `GITHUB_TOKEN_DESTINATION` = see above for permissions needed
+* `USER_ACCESS_FILE` = the input file (optional, can be passed in on command line)
+
 This script updates user permissions on repositories. It accepts a CSV file with the columns:
 
-If multiple users need access to a repo, then a seperate row will be needed for each user.
 
 ```
 REPO,USER,ACCESS
@@ -85,11 +90,13 @@ REPO,USER,ACCESS
 
 Where:
 
-* `REPO` is the full GitHub repository URL (for example `https://github.com/bcgov/my-repo`)
+* `REPO` is the name of the repo (ex `my-cool-repo`)
 * `USER` is the GitHub username
-* `ACCESS` is one of `pull`, `push`, `admin`, `maintain`, or `triage`
+* `ACCESS` is one of `pull`, `push`, `admin`, `maintain`, `read`, or `triage`
 
-If a row contains an invalid repository URL, user, or inaccessible repo, the script logs the issue and continues to the next row.
+If a row contains an invalid repository, user, or inaccessible repo, the script logs the issue and continues to the next row.
+
+If multiple users need access to a repo, then a seperate row will be needed for each user.
 
 Run the script with:
 
