@@ -26,3 +26,5 @@ spec:
         - https://github.com/bcgov/design-system/blob/main/catalog-info.yaml
         - https://github.com/bcgov/adr/blob/dev/catalog-info.yaml
         - https://github.com/bcgov/notify-techdocs/blob/main/catalog-info.yaml
+        - https://github.com/bcgov/itk-api-governance/blob/main/techdocs/api-style-guides/catalog-info.yaml
+        - https://github.com/bcgov/itk-api-governance/blob/main/techdocs/sdx-api-standards/catalog-info.yaml
