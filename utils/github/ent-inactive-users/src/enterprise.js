@@ -26,7 +26,10 @@ export async function getUsersToIgnore(octokit, orgsToInclude) {
             usersToIgnore.add(collaborator.login);
         }
     }
-    return usersToIgnore;
+
+    return new Set(
+      Array.from(usersToIgnore, (username) => username?.toLowerCase())
+    );
 }
 
 /**
@@ -35,6 +38,13 @@ export async function getUsersToIgnore(octokit, orgsToInclude) {
  * @returns {Promise<Array<Member>>}
  */
 export async function getEnterpriseMembers(octokit, enterprise, orgsToInclude = []) {
+
+  logger.info('Retrieving users to ignore from outside collaborators...');
+  const ignoredUsernames = await getUsersToIgnore(octokit, orgsToInclude);
+
+  logger.info(`Users to ignore: ${Array.from(ignoredUsernames).join(', ')}`);
+
+
   logger.info('Retrieving consumed license results from the enterprise...');
 
   const results = await octokit.paginate('GET /enterprises/{enterprise}/consumed-licenses', {
@@ -42,17 +52,6 @@ export async function getEnterpriseMembers(octokit, enterprise, orgsToInclude = 
     per_page: 100,
     headers: HEADERS,
   });
-
-  logger.info(`Retrieved ${results.length} members from the ${enterprise} enterprise.`);
-
-  logger.info('Retrieving users to ignore from outside collaborators...');
-  const ignoredUsernames = new Set(
-    Array.from(await getUsersToIgnore(octokit, orgsToInclude ?? []), (username) =>
-      username?.toLowerCase()
-    )
-  );
-
-  logger.info(`Users to ignore: ${Array.from(ignoredUsernames).join(', ')}`);
 
   const members = results.flatMap((result) =>
     result.users
