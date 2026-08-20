@@ -1,0 +1,24 @@
+{
+  "name": "ent-inactive-users",
+  "version": "1.0.0",
+  "description": "Identify inactive members in a GitHub Enterprise",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "run": "node src/index.js",
+    "test": "NODE_ENV=test node --test",
+    "lint": "eslint src/**/*.js"
+  },
+  "dependencies": {
+    "@octokit/plugin-throttling": "^11.0.5",
+    "octokit": "^5.0.5",
+    "pino": "^10.3.1"
+  },
+  "devDependencies": {
+    "eslint": "^10.8.1"
+  },
+  "engines": {
+    "node": ">=26.0.0"
+  }
+}
