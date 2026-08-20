@@ -43,9 +43,9 @@ export async function getRecentCommitsInOrg(octokit, userName, org, sinceDate) {
  * @param {*} sinceDate 
  * @returns 
  */
-export async function hasRecentCommits(octokit, member, sinceDate) {
+export async function hasRecentCommits(octokit, member, sinceDate, orgsToInclude = []) {
     // api doesn't allow logical "OR" in the search query, so we have to check each org separately
-    for (const org of member.orgs) {    
+    for (const org of member.getUserOrgs(orgsToInclude)) {
         if (await getRecentCommitsInOrg(octokit, member.userName, org, sinceDate)) {
             return true;
         }
@@ -80,10 +80,10 @@ export async function hasAuditLogActivityInOrg(octokit, member, org, sinceDate) 
  * @param {string} sinceDate ISO date string (YYYY-MM-DD)
  * @returns {Promise<boolean>}
  */
-export async function hasAuditLogActivity(octokit, member, sinceDate) {
+export async function hasAuditLogActivity(octokit, member, sinceDate, orgsToInclude = []) {
   //using the org audit log api to check for activity, since some audit log events
   // are not captured in the enterprise audit log api
-  for (const org of member.orgs) {
+  for (const org of member.getUserOrgs(orgsToInclude)) {
     if (await hasAuditLogActivityInOrg(octokit, member, org, sinceDate)) {
       return true;
     }
@@ -108,12 +108,12 @@ export async function getInactiveMembers(octokit, enterprise, orgs, inactiveDays
   const inactive = [];
 
   for (const member of members) {
-    if (await hasAuditLogActivity(octokit, member, isoDate)) {
+    if (await hasAuditLogActivity(octokit, member, isoDate, orgs)) {
       logger.info(`${member.userName}: active (audit log).`);
       continue;
     }
 
-    if (await hasRecentCommits(octokit, member, isoDate)) {
+    if (await hasRecentCommits(octokit, member, isoDate, orgs)) {
       logger.info(`${member.userName}: active (commit history).`);
       continue;
     }

@@ -52,7 +52,7 @@ describe("activity check tests", () => {
       'GET /search/commits',
       {
         q: 'author:alice author-date:>2026-05-16 org:org-a',
-        headers: { 'X-GitHub-Api-Version': '2022-11-28' },
+        headers: { 'X-GitHub-Api-Version': '2026-03-10' },
         per_page: 1,
       },
     ]);
@@ -83,7 +83,8 @@ describe("activity check tests", () => {
     const request = mock.fn(async (_route, options) => ({
       data: { total_count: options.q.includes('org-b') ? 1 : 0 },
     }));
-    const member = { userName: 'alice', orgs: ['org-a', 'org-b', 'org-c'] };
+
+    const member = new Member('alice', 'alice@example.com', ['org-a:member', 'org-b:member', 'org-c:member']);
 
     assert.equal(await hasRecentCommits({ request }, member, '2026-05-16'), true);
     assert.equal(request.mock.calls.length, 2);
@@ -102,7 +103,7 @@ describe("activity check tests", () => {
 
   test('hasAuditLogActivity returns false for an empty audit log and API errors', async () => {
     const request = mock.fn(async () => ({ data: [] }));
-    const member = { userName: 'alice', orgs: ['org-a'] };
+    const member = new Member('alice', 'alice@example.com', ['org-a:member']);
 
     assert.equal(await hasAuditLogActivity({ request }, member, '2026-05-16'), false);
 
@@ -144,7 +145,7 @@ describe("activity check tests", () => {
       new Member(
         'inactive',
         'inactive@example.com',
-        ['org-c']
+        ['org-c:member']
       )
     ]);
     assert.equal(paginate.mock.calls.length, 1);

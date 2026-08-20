@@ -2,25 +2,31 @@ import { HEADERS } from './config.js';
 import { logger } from './logger.js';
 
 
-/**
- * Get the orgs for a user based on their member roles.
- * Only include active orgs to avoid API lookups calls to inactive/archived orgs.
- * @param {Array<string>} memberRoles Member roles are formatted as `org:role`
- * @returns {Array<string>}
- */
-export function getUserOrgs(memberRoles = [], orgsToInclude = []) {
-  const includedOrgs = orgsToInclude ?? [];
+export async function getOutsideCollaboratorsInOrg(octokit, org) {
+    try {
+        const { data } = await octokit.request('GET /orgs/{org}/outside_collaborators', {
+            org: org,
+            headers: HEADERS,
+            per_page: 100,
+        });
+        return data;
+    } catch (error) {
+        logger.warn(
+            `Unable to read outside collaborators for org ${org}: ${error.message}`
+        );
+        return [];
+    }
+}
 
-  return memberRoles
-    .map((role) => role.match(/^([^:]+):/)?.[1]?.trim().toLowerCase())
-    .filter(
-      (org) =>
-        org &&
-        (includedOrgs.length === 0 ||
-          includedOrgs.some(
-            (includedOrg) => includedOrg.toLowerCase() === org
-          ))
-    );
+export async function getUsersToIgnore(octokit, orgsToInclude) {
+    const usersToIgnore = new Set();
+    for (const org of orgsToInclude) {
+        const outsideCollaborators = await getOutsideCollaboratorsInOrg(octokit, org);
+        for (const collaborator of outsideCollaborators) {
+            usersToIgnore.add(collaborator.login);
+        }
+    }
+    return usersToIgnore;
 }
 
 /**
@@ -28,7 +34,7 @@ export function getUserOrgs(memberRoles = [], orgsToInclude = []) {
  * @param {import('octokit').Octokit} octokit
  * @returns {Promise<Array<Member>>}
  */
-export async function getEnterpriseMembers(octokit, enterprise, orgsToInclude) {
+export async function getEnterpriseMembers(octokit, enterprise, orgsToInclude = []) {
   logger.info('Retrieving consumed license results from the enterprise...');
 
   const results = await octokit.paginate('GET /enterprises/{enterprise}/consumed-licenses', {
@@ -37,26 +43,54 @@ export async function getEnterpriseMembers(octokit, enterprise, orgsToInclude) {
     headers: HEADERS,
   });
 
-  const members = results.flatMap((result) =>
-    result.users.map((user) => new Member(
-      user.github_com_login,
-      user.github_com_saml_name_id,
-      getUserOrgs(user.github_com_member_roles, orgsToInclude),
-      user.github_com_member_roles
-    ))
+  logger.info(`Retrieved ${results.length} members from the ${enterprise} enterprise.`);
+
+  logger.info('Retrieving users to ignore from outside collaborators...');
+  const ignoredUsernames = new Set(
+    Array.from(await getUsersToIgnore(octokit, orgsToInclude ?? []), (username) =>
+      username?.toLowerCase()
+    )
   );
 
-  logger.info(`Retrieved ${members.length} members from the ${enterprise} enterprise.`);
+  logger.info(`Users to ignore: ${Array.from(ignoredUsernames).join(', ')}`);
+
+  const members = results.flatMap((result) =>
+    result.users
+      .filter((user) => !ignoredUsernames.has(user.github_com_login?.toLowerCase()))
+      .map((user) => new Member(
+        user.github_com_login,
+        user.github_com_saml_name_id,
+        user.github_com_member_roles,
+        user.github_com_verified_domain_emails,
+      ))
+  );
+
+  logger.info(`Will process ${members.length} members from the ${enterprise} enterprise.`);
   return members;
 }
 
 export class Member { 
-  constructor(userName, email, orgs, membership) {
+  constructor(userName, email, membership, githubVerifiedDomainEmails = []) {
     this.userName = userName;
     this.email = email;
-    this.orgs = orgs;
     this.membership = membership;
+    this.githubVerifiedDomainEmails = githubVerifiedDomainEmails;
   }
+  
+  getUserOrgs(orgsToInclude = []) {
+    const includedOrgs = orgsToInclude ?? [];
+    return this.membership
+      .map((role) => role.match(/^([^:]+):/)?.[1]?.trim().toLowerCase())
+      .filter(
+        (org) =>
+          org &&
+          (includedOrgs.length === 0 ||
+            includedOrgs.some(
+              (includedOrg) => includedOrg.toLowerCase() === org
+            ))
+      );
+  }
+
 }
 
 

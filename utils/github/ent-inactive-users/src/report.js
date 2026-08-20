@@ -13,10 +13,10 @@ export async function writeReport(members) {
   }
   logger.info(`Writing report for ${members.length} inactive member(s)...`);
 
-  const rows = ['userName,email,membership'];
+  const rows = ['userName,email,membership,githubVerifiedDomainEmails'];
 
-  for (const { userName, email, membership } of members) {
-    rows.push([userName, email, membership.join('|')].join(','));
+  for (const { userName, email, membership, githubVerifiedDomainEmails } of members) {
+    rows.push([userName, email, membership.join('|'), githubVerifiedDomainEmails.join('|')].join(','));
   }
 
   const filename = `inactive-users-${new Date().toISOString().slice(0, 10)}.csv`;
