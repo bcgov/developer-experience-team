@@ -1,8 +1,10 @@
 import pino from 'pino';
 
+const fileStream = pino.destination({ dest: 'info.log', sync: false });
+
 export const logger = pino(
   {
-    level: (process.env.LOG_LEVEL || 'info'),
+    level: process.env.LOG_LEVEL || 'info',
     timestamp: pino.stdTimeFunctions.isoTime,
     // use standard logging levels rather than pino's numeric logging levels
     formatters: {
@@ -10,9 +12,9 @@ export const logger = pino(
         return { level: label };
       },
     },
-  }, 
-  pino.transport({
-    target: 'pino/file',
-    options: { destination: 'info.log' },
-  })
+  },
+  pino.multistream([
+    { stream: process.stdout },
+    { stream: fileStream },
+  ])
 );

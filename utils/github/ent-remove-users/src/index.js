@@ -114,11 +114,10 @@ async function removeUsersFromEnterprise(octokit, enterprise, usernames, debugMo
 
         if (debugMode) {
           logger.info(`[DEBUG MODE] Would remove user: ${username}`);
-          continue;
         } else {
           await removeUserFromEnterprise(octokit, enterpriseId, userId, username);
-          processedNum += 1;
         }
+        processedNum += 1;
       } catch (error) { 
         errorNum += 1;
       }
@@ -179,7 +178,7 @@ export async function main() {
       const octokit = createOctokit(token);
       await removeUsersFromEnterprise(octokit, enterprise, usernames, debugMode);
     }else {
-      console.log('Operation cancelled by user.');
+      logger.info('Operation cancelled by user.');
       process.exitCode = 0;
       return;
     }
