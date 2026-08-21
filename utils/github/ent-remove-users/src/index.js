@@ -6,13 +6,16 @@ import { stdin, stdout } from 'node:process';
 import readline from 'node:readline/promises';
 import { parse } from 'csv-parse/sync';
 
+function getDebugModeMessage(debugMode) {
+  return debugMode ? "\u{1F41E} [DEBUG MODE] " : "";
+}
 
 async function shouldProceed(usernames, enterprise, debugMode) {
   
   const rl = readline.createInterface({ input: stdin, output: stdout });
 
   // Prompt the user and wait for their input
-  const text = debugMode ? `\u{1F41E} [DEBUG MODE] ${usernames.length} users will NOT be removed. Type "yes" to proceed: ` : `\u{1F4A3} Remove ${usernames.length} users from ${enterprise}? Are you SURE you want to do this??? Type "yes" to proceed \u{1F4A3}: `;
+  const text = debugMode ? `${getDebugModeMessage(debugMode)}${usernames.length} users will NOT be removed. Type "yes" to proceed: ` : `\u{1F4A3} Remove ${usernames.length} users from ${enterprise}? Are you SURE you want to do this??? Type "yes" to proceed \u{1F4A3}: `;
   const name = await rl.question(text);
 
   // Always close the interface when done
@@ -104,7 +107,7 @@ async function getUsersFromFile(filePath) {
 
 async function removeUsersFromEnterprise(octokit, enterprise, usernames, debugMode) {
 
-    logger.info(`Starting removal of ${usernames.length} users from enterprise ${enterprise}...`);
+    logger.info(`${getDebugModeMessage(debugMode)}Starting removal of ${usernames.length} users from enterprise ${enterprise}...`);
     const enterpriseId = await getEnterpriseId(enterprise, octokit);
     let errorNum = 0;
     let processedNum = 0;
@@ -113,7 +116,7 @@ async function removeUsersFromEnterprise(octokit, enterprise, usernames, debugMo
         const userId = await getGitHubUserId(username, octokit);
 
         if (debugMode) {
-          logger.info(`[DEBUG MODE] Would remove user: ${username}`);
+          logger.info(`${getDebugModeMessage(debugMode)}Would remove user: ${username}`);
         } else {
           await removeUserFromEnterprise(octokit, enterpriseId, userId, username);
         }
@@ -122,7 +125,7 @@ async function removeUsersFromEnterprise(octokit, enterprise, usernames, debugMo
         errorNum += 1;
       }
     }
-    logger.info(`Completed removal process. Processed ${processedNum}/${usernames.length} users. ${errorNum}/${usernames.length} had errors.`);
+    logger.info(`${getDebugModeMessage(debugMode)}Completed removal process. Processed ${processedNum}/${usernames.length} users. ${errorNum}/${usernames.length} had errors.`);
 }
 
 export async function main() {
