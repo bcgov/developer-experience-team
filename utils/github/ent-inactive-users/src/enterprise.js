@@ -11,16 +11,43 @@ export async function getOutsideCollaboratorsInOrg(octokit, org) {
         });
         return data;
     } catch (error) {
-        logger.warn(
+        logger.error(
             `Unable to read outside collaborators for org ${org}: ${error.message}`
         );
-        return [];
+        throw error;
     }
 }
 
-export async function getUsersToIgnore(octokit, orgsToInclude) {
+export async function getAllOrgsInEnterprise(octokit, enterprise) {
+  logger.info(`Retrieving all organizations in enterprise: ${enterprise}`);
+  try {
+    const query = `
+      query ($enterprise: String!) {
+          enterprise(slug: $enterprise) {
+              organizations(first: 100) {
+                  nodes {
+                      login
+                  }
+              }
+          }
+      }`;
+
+    const response = await octokit.graphql({
+      query: query,
+      enterprise: enterprise,
+    });
+    const interim = response.enterprise.organizations.nodes.map((org) => org.login);
+    return interim;
+  } catch (error) {
+    logger.error(`Unable to read organizations in enterprise: ${error.message}`);
+    throw error;
+  }
+}
+
+export async function getUsersToIgnore(octokit, orgsToInclude, enterprise) {
     const usersToIgnore = new Set();
-    for (const org of orgsToInclude) {
+    const orgsToScan = orgsToInclude && orgsToInclude.length > 0 ? orgsToInclude : await getAllOrgsInEnterprise(octokit, enterprise);
+    for (const org of orgsToScan) {
         const outsideCollaborators = await getOutsideCollaboratorsInOrg(octokit, org);
         for (const collaborator of outsideCollaborators) {
             usersToIgnore.add(collaborator.login);
@@ -40,7 +67,7 @@ export async function getUsersToIgnore(octokit, orgsToInclude) {
 export async function getEnterpriseMembers(octokit, enterprise, orgsToInclude = []) {
 
   logger.info('Retrieving users to ignore from outside collaborators...');
-  const ignoredUsernames = await getUsersToIgnore(octokit, orgsToInclude);
+  const ignoredUsernames = await getUsersToIgnore(octokit, orgsToInclude, enterprise);
 
   logger.info(`Users to ignore: ${Array.from(ignoredUsernames).join(', ')}`);
 

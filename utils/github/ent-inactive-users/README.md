@@ -81,11 +81,15 @@ node src/index.js --enterprise my-enterprise
 
 The script writes a CSV report to the current working directory. 
 
+userName = github_com_login
+email = github_com_saml_name_id
+membership = github_com_member_roles
+githubVerifiedDomainEmails = github_com_verified_domain_emails
 
 ```csv
-userName,email
-alice,alice@example.com
-bob,bob@example.com
+userName,email,membership,githubVerifiedDomainEmails
+alice,alice@example.org.com,org1:Member,
+bob,bob@example.org.com,org2:Member,bob@example.com
 ```
 
 ## Testing

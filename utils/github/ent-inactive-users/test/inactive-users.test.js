@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mock, test, beforeEach, afterEach, after, describe } from 'node:test';
+import { mock, test, beforeEach, afterEach, describe } from 'node:test';
 import { Member } from '../src/enterprise.js';
 import {
   getInactiveMembers,
@@ -112,7 +112,40 @@ describe("activity check tests", () => {
     assert.equal(await hasAuditLogActivity({ request: failingRequest }, member, '2026-05-16'), false);
   });
 
+});
+
+describe("getInactiveMembers tests", () => {
+
+  let request, graphql;
+
+  beforeEach(() => {
+    
+    request = mock.fn(async (route, options) => {
+      if (route === 'GET /orgs/{org}/audit-log') {
+        return { data: options.phrase.includes(`actor:audit-active`) ? [{ action: 'pull_request.create' }] : [] };
+      }else if (route === 'GET /search/commits') {
+        return { data: { total_count: options.q.includes('commit-active') ? 1 : 0 } };
+      }else if (route === 'GET /orgs/{org}/outside_collaborators') {
+        return { data: [ {login: 'outside-collaborator-1'}, {login: 'outside-collaborator-2'} ]};
+      }
+    });
+    graphql = mock.fn(async () => ({
+      enterprise: {
+        organizations: {
+          nodes: [{ login: 'org-a' }, { login: 'org-b' }, { login: 'org-c' }],
+        },
+      },
+    }));
+  });
+
+  afterEach(() => {
+    request = null;
+    graphql = null;
+  });
+
+
   test('getInactiveMembers returns only members with no audit or commit activity', async () => {
+    
     const paginate = mock.fn(async () => [{
       users: [
         {
@@ -130,16 +163,19 @@ describe("activity check tests", () => {
           github_com_saml_name_id: 'inactive@example.com',
           github_com_member_roles: ['org-c:member'],
         },
+        {
+          github_com_login: 'outside-collaborator-1',
+          github_com_saml_name_id: 'outside-collaborator-1@example.com',
+          github_com_member_roles: ['org-a/repo1:Collaborator'],
+        },
+        {
+          github_com_login: 'outside-collaborator-2',
+          github_com_saml_name_id: 'outside-collaborator-2@example.com',
+          github_com_member_roles: ['org-b/repo2:Collaborator'],
+        }
       ],
     }]);
-    const request = mock.fn(async (route, options) => {
-      if (route === 'GET /orgs/{org}/audit-log') {
-        return { data: options.org === 'org-a' ? [{ action: 'member.added' }] : [] };
-      }
-      return { data: { total_count: options.q.includes('commit-active') ? 1 : 0 } };
-    });
-
-    const inactive = await getInactiveMembers({ paginate, request }, "default-enterprise", [], 90);
+    const inactive = await getInactiveMembers({ paginate, request, graphql }, "default-enterprise", [], 90);
 
     assert.deepEqual(inactive, [
       new Member(
@@ -148,7 +184,50 @@ describe("activity check tests", () => {
         ['org-c:member']
       )
     ]);
-    assert.equal(paginate.mock.calls.length, 1);
-    assert.equal(request.mock.calls.length, 5);
+    assert.equal(paginate.mock.calls.length, 1); // 1 call to get enterprise members
+    assert.equal(request.mock.calls.length, 8); // 3 calls to get outside collaborators (1 call for each orgs), 3 calls to get audit logs, 2 calls to get commits
+    assert.equal(graphql.mock.calls.length, 1); //1 call to graphql because the orgs list is empty, so we need to get all orgs in the enterprise
   });
+
+  test('getInactiveMembers for specified orgs', async () => {
+    
+    const paginate = mock.fn(async () => [{
+      users: [
+        {
+          github_com_login: 'audit-active',
+          github_com_saml_name_id: 'audit@example.com',
+          github_com_member_roles: ['org-a:member'],
+        },
+        {
+          github_com_login: 'commit-active',
+          github_com_saml_name_id: 'commit-active@example.com',
+          github_com_member_roles: ['org-c:member'],
+        },
+        {
+          github_com_login: 'inactive',
+          github_com_saml_name_id: 'inactive@example.com',
+          github_com_member_roles: ['org-c:member'],
+        },
+        {
+          github_com_login: 'outside-collaborator-1',
+          github_com_saml_name_id: 'outside-collaborator-1@example.com',
+          github_com_member_roles: ['org-a/repo1:Collaborator'],
+        },
+      ],
+    }]);
+
+    const inactive = await getInactiveMembers({ paginate, request, graphql }, "default-enterprise", ['org-a', 'org-c'], 90);
+
+    assert.deepEqual(inactive, [
+      new Member(
+        'inactive',
+        'inactive@example.com',
+        ['org-c:member']
+      )
+    ]);
+    assert.equal(paginate.mock.calls.length, 1); // 1 call to get enterprise members
+    assert.equal(request.mock.calls.length, 7); // 2 calls to get outside collaborators (1 call for each org), 3 calls to get audit logs, 2 calls to get commits
+    assert.equal(graphql.mock.calls.length, 0); // 0 calls to graphql because the orgs list is specified, so we don't need to get all orgs in the enterprise
+  });
+
 });

@@ -44,7 +44,7 @@ export async function main() {
   const inactiveDaysInt = inactiveDays ? parseInt(inactiveDays) : 90;
   
   if (isNaN(inactiveDaysInt) || inactiveDaysInt <= 0 || inactiveDaysInt > 180) {
-    console.error('Error: --inactiveDays must be be between 1 and 180 (inclusive).');
+    console.error('Error: --inactiveDays must be between 1 and 180 (inclusive).');
     process.exitCode = 1;
     return;
   }
