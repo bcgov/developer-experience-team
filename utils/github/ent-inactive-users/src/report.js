@@ -1,5 +1,7 @@
-import fs from 'fs/promises';
+import fs from 'fs';
 import { logger } from './logger.js';
+import { stringify } from 'csv-stringify';
+import { pipeline } from 'stream/promises';
 
 
 /**
@@ -7,19 +9,42 @@ import { logger } from './logger.js';
  * @param {Array<import('./enterprise.js').Member>} members
  */
 export async function writeReport(members) {
+
   if (members.length === 0) {
     logger.info('No inactive members found. No report will be generated.');
     return;
   }
+
   logger.info(`Writing report for ${members.length} inactive member(s)...`);
 
-  const rows = ['userName,email,membership,githubVerifiedDomainEmails'];
-
-  for (const { userName, email, membership, githubVerifiedDomainEmails } of members) {
-    rows.push([userName, email, membership.join('|'), githubVerifiedDomainEmails.join('|')].join(','));
-  }
-
   const filename = `inactive-users-${new Date().toISOString().slice(0, 10)}.csv`;
-  await fs.writeFile(filename, rows.join('\n'), 'utf8');
-  logger.info(`\nReport written to ${filename}`);
+  const columns = [
+    "userName",
+    "email",
+    "membership",
+    "githubVerifiedDomainEmails"
+  ];
+  
+  const stringifier = stringify({ header: true, columns: columns });
+  const writableStream = fs.createWriteStream(filename, { encoding: 'utf8' });
+ 
+  writableStream.on("finish", () => {
+     logger.info(`\nReport written to ${filename}`);
+  });
+
+  writableStream.on("error", (error) => {
+    logger.error("Error writing to file:", error.message);
+    throw error;
+  });
+
+  await pipeline(
+    async function* () {
+      for (const row of members) {
+        yield row;
+      }
+    },
+    stringifier,
+    writableStream
+  );
 }
+

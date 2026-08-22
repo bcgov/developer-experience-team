@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@octokit/plugin-throttling": "^11.0.5",
+    "csv-stringify": "^6.8.3",
     "octokit": "^5.0.5",
     "pino": "^10.3.1"
   },
