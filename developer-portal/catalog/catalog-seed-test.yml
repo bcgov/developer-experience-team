@@ -15,6 +15,9 @@ spec:
         - https://github.com/bcgov/common-hosted-form-service-techdocs/blob/main/catalog-info.yml
         - https://github.com/bcgov/common-object-management-service-docs/blob/main/catalog-info.yaml
         - https://github.com/bcgov/design-system/blob/main/catalog-info.yaml
-        - https://github.com/bcgov/itk-api-governance/blob/main/techdocs/api-style-guides/catalog-info.yaml
-        - https://github.com/bcgov/itk-api-governance/blob/main/techdocs/sdx-api-standards/catalog-info.yaml
+        - https://github.com/bcgov/itk-api-governance/blob/test/techdocs/api-style-guides/catalog-info.yaml
+        - https://github.com/bcgov/itk-api-governance/blob/test/techdocs/sdx-api-standards/catalog-info.yaml
+        - https://github.com/bcgov/connected-services-techdocs/blob/test/getting-started/catalog-info.yaml
+        - https://github.com/bcgov/connected-services-techdocs/blob/test/integration-toolkit/catalog-info.yaml
+        - https://github.com/bcgov/connected-services-techdocs/blob/test/secure-data-exchange/catalog-info.yaml
         - https://github.com/bcgov/adr/blob/dev/catalog-info.yaml
