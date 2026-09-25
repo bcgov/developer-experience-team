@@ -1,7 +1,7 @@
 import { logger } from './logger.js';
 import { constants } from 'http2'
+import { GH_API_HEADER } from '@bcgov/github-common';
 
-const HEADER = { 'X-GitHub-Api-Version': '2026-03-10' };
 const VALID_PERMISSIONS = ['pull', 'triage', 'push', 'maintain', 'admin'];
 
 function isValidPermission(permission) {
@@ -26,7 +26,7 @@ async function assignTeamsToRepo(octokit, org, repo) {
         repo: repo.name,
         permission: team.permission,
         headers: {
-          ...HEADER,
+          ...GH_API_HEADER,
         },
       });
 
@@ -46,7 +46,7 @@ async function checkUserMembership(octokit, org, username) {
       org: org,
       username: username,
       headers: {
-        ...HEADER,
+        ...GH_API_HEADER,
       }
     });
     return results?.status === constants.HTTP_STATUS_NO_CONTENT;
@@ -87,7 +87,7 @@ async function assignUsersToRepo(octokit, org, repo, userCache) {
         username: user.name,
         permission: user.permission,
         headers: {
-          ...HEADER,
+          ...GH_API_HEADER,
         },
       });
     }
@@ -100,11 +100,11 @@ async function assignUsersToRepo(octokit, org, repo, userCache) {
 async function assignUsersAndTeams(octokit, org, repo, userCache) {
   logger.info(`assigning users and teams for repo ${repo.name}`);
   for (const user of repo.users) {
-    logger.info(`processing user ${user.name} with permissions ${user.permission} for repo ${repo.name}`);
+    logger.info(`processing user ${user.name} with permission "${user.permission}" for repo ${repo.name}`);
     await assignUsersToRepo(octokit, org, repo, userCache);
   }
   for (const team of repo.teams) {
-    logger.info(`processing team ${team.name} with permissions ${team.permission} for repo ${repo.name}`);
+    logger.info(`processing team ${team.name} with permission "${team.permission}" for repo ${repo.name}`);
     await assignTeamsToRepo(octokit, org, repo);
   }
 }
@@ -134,7 +134,7 @@ async function createRepo(octokit, org, repo, userCache) {
       name: repo.name,
       private: true,
       headers: {
-        ...HEADER,
+        ...GH_API_HEADER,
       },
     });
 
