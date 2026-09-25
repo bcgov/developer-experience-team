@@ -32,6 +32,8 @@ async function assignTeamsToRepo(octokit, org, repo) {
 
       if (result?.status !== constants.HTTP_STATUS_NO_CONTENT) {
         logger.warn(`Failed to assign team ${team.name} to repo ${repo.name}`);
+      } else {
+        logger.info(`Assigned team ${team.name} to repo ${repo.name} with permission '${team.permission}'`);
       }
     }
   } catch (error) {
@@ -52,7 +54,7 @@ async function checkUserMembership(octokit, org, username) {
     return results?.status === constants.HTTP_STATUS_NO_CONTENT;
   } catch (error) {
     logger.error({ err: error }, `Error checking user membership in org ${org}:`);
-    throw error;
+    return false;
   }
 }
 
@@ -80,7 +82,6 @@ async function assignUsersToRepo(octokit, org, repo, userCache) {
         logger.warn(`Skipping user ${user.name} in repo ${repo.name}: User is not a member of the org ${org}`);
         continue;
       }
-
       await octokit.request('PUT /repos/{owner}/{repo}/collaborators/{username}', {
         owner: org,
         repo: repo.name,
@@ -90,6 +91,7 @@ async function assignUsersToRepo(octokit, org, repo, userCache) {
           ...GH_API_HEADER,
         },
       });
+      logger.info(`Assigned user ${user.name} to repo ${repo.name} with permission '${user.permission}'`);
     }
   } catch (error) {
     logger.error({ err: error }, `Error assigning users to repo ${repo.name}:`);
@@ -100,11 +102,9 @@ async function assignUsersToRepo(octokit, org, repo, userCache) {
 async function assignUsersAndTeams(octokit, org, repo, userCache) {
   logger.info(`assigning users and teams for repo ${repo.name}`);
   for (const user of repo.users) {
-    logger.info(`processing user ${user.name} with permission "${user.permission}" for repo ${repo.name}`);
     await assignUsersToRepo(octokit, org, repo, userCache);
   }
   for (const team of repo.teams) {
-    logger.info(`processing team ${team.name} with permission "${team.permission}" for repo ${repo.name}`);
     await assignTeamsToRepo(octokit, org, repo);
   }
 }
@@ -140,15 +140,14 @@ async function createRepo(octokit, org, repo, userCache) {
 
     if (response.status === constants.HTTP_STATUS_CREATED) {
       logger.info(`Successfully created repo ${repo.name}`);
-      await assignUsersAndTeams(octokit, org, repo, userCache);
-      return true;
+      return { success: true, url: response.data.html_url };
     } else {
       logger.error(`Failed to create repo ${repo.name}. Status: ${response.status}`);
-      return false;
+      return { success: false };
     }
   } catch (error) {
     logger.error({ err: error }, `Error creating repo ${repo.name}:`);
-    return false;
+    return { success: false };
   }
 }
 
@@ -156,16 +155,20 @@ async function createRepo(octokit, org, repo, userCache) {
 export async function createRepos(octokit, org, json) {
   let numCreated = 0;
   const userCache = new Map();
+  const repoUrls = [];
 
   for (const repo of json) {
     try {
       const created = await createRepo(octokit, org, repo, userCache);
-      if (created) {
+      if (created.success) {
         numCreated++;
+        repoUrls.push(created.url);
+        await assignUsersAndTeams(octokit, org, repo, userCache);
       }
     } catch (error) {
       logger.error({ err: error }, `Error creating repo ${repo.name}:`);
     }
   }
   logger.info(`Finished creating repos for org ${org} from JSON data. Created: ${numCreated}/${json.length}`);
+  return repoUrls;
 }
