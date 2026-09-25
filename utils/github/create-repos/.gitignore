@@ -1,0 +1,4 @@
+*.json
+!example.json
+!package.json
+!package-lock.json

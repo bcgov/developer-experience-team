@@ -1,0 +1,30 @@
+[
+    {
+        "name": "example-repo-1",
+        "users": [{"name": "user1", "permission": "admin"}, {"name": "user2", "permission": "write"}],
+        "teams": [{"name": "team1", "permission": "admin"}, {"name": "team2", "permission": "write"}]
+    },
+    {
+        "name": "example-repo-2",
+        "users": [{"name": "user3", "permission": "admin"}, {"name": "user4", "permission": "write"}],
+        "teams": [{"name": "team3", "permission": "admin"}, {"name": "team4", "permission": "write"}]
+    },
+    {
+        "name": "example-repo-3",
+        "users":[],
+        "teams": [{"name": "team5", "permission": "admin"}, {"name": "team6", "permission": "write"}]
+    },
+    {
+        "name": "example-repo-4",
+        "users": [{"name": "user5", "permission": "admin"}, {"name": "user6", "permission": "write"}],
+        "teams": []
+    },
+    {
+        "name": "example-repo-5",
+        "teams": [{"name": "team7", "permission": "admin"}, {"name": "team8", "permission": "write"}]
+    },
+    {
+        "name": "example-repo-6",
+        "users": [{"name": "user9", "permission": "admin"}, {"name": "user10", "permission": "write"}]
+    }
+]
