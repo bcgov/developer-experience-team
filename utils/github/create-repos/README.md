@@ -76,22 +76,28 @@ Reference `permission` field in [Add or update team repository permissions](http
 
 ### Running
 
-Run the script with the organization name and a JSON file that defines repositories:
+Run the script with the organization name, an input JSON file that defines repositories, and an output file for the generated repository URLs:
 
 ```bash
-npm start -- --org <organization-name> --file <path-to-json>
+npm start -- --org <organization-name> --input <path-to-json> --output <path-to-results>
 ```
+
+The arguments can also be provided using their short aliases:
+
+- `--org`, `-o`: GitHub organization name.
+- `--input`, `-i`: Path to the input JSON file.
+- `--output`, `-u`: Path to the output file. Existing files are overwritten.
 
 Example:
 
 ```bash
-npm start -- --org bcgov-c --file example.json
+npm start -- --org bcgov-c --input example.json --output results.txt
 ```
 
 You can also run the script directly with Node:
 
 ```bash
-node src/index.js --org bcgov-c --file example.json
+node src/index.js --org bcgov-c --input example.json --output results.txt
 ```
 
 ## Notes
