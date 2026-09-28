@@ -20,4 +20,5 @@ spec:
         - https://github.com/bcgov/connected-services-techdocs/blob/test/getting-started/catalog-info.yaml
         - https://github.com/bcgov/connected-services-techdocs/blob/test/integration-toolkit/catalog-info.yaml
         - https://github.com/bcgov/connected-services-techdocs/blob/test/secure-data-exchange/catalog-info.yaml
+        - https://github.com/bcgov/efv-itk-docs/blob/test/catalog-info.yaml
         - https://github.com/bcgov/adr/blob/dev/catalog-info.yaml
