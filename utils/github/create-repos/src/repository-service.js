@@ -2,26 +2,10 @@ import { logger } from './logger.js';
 import { constants } from 'http2'
 import { GH_API_HEADER } from '@bcgov/github-common';
 
-const VALID_PERMISSIONS = ['pull', 'triage', 'push', 'maintain', 'admin'];
-
-function isValidPermission(permission) {
-  return permission && VALID_PERMISSIONS.includes(permission);
-}
-
 async function assignTeamsToRepo(octokit, org, repo) {
   let hasError = false;
   try {
-    for (const team of repo.teams) {
-      if (!team.slug) {
-        hasError = true;
-        logger.warn(`Skipping team with missing name in repo ${repo.name}`);
-        continue;
-      }
-      if (!isValidPermission(team.permission)) {
-        hasError = true;
-        logger.warn(`Skipping team ${team.slug} in repo ${repo.name}: No permission specified or invalid permission`);
-        continue;
-      }
+    for (const team of repo.teams ?? []) {
       const result = await octokit.request('PUT /orgs/{org}/teams/{team_slug}/repos/{owner}/{repo}', {
         org: org,
         team_slug: team.slug,
@@ -58,7 +42,7 @@ async function checkUserMembership(octokit, org, username) {
     return results?.status === constants.HTTP_STATUS_NO_CONTENT;
   } catch (error) {
     if (error.status === constants.HTTP_STATUS_NOT_FOUND) {
-      logger.warn(`User ${username} not a GitHub member of org ${org}`);
+      logger.error(`User ${username} not a GitHub member of org ${org}`);
       return false;
     }
     throw error;
@@ -68,18 +52,7 @@ async function checkUserMembership(octokit, org, username) {
 async function assignUsersToRepo(octokit, org, repo, userCache) {
   let hasError = false;
   try {
-    for (const user of repo.users) {
-      if (!user.name) {
-        hasError = true;
-        logger.warn(`Skipping user with missing name in repo ${repo.name}`);
-        continue;
-      }
-      if (!isValidPermission(user.permission)) {
-        hasError = true;
-        logger.warn(`Skipping user ${user.name} in repo ${repo.name}: No permission specified or invalid permission`);
-        continue;
-      }
-
+    for (const user of repo.users ?? []) {
       try {
         let isMember;
         if (userCache.has(user.name)) {
@@ -91,7 +64,7 @@ async function assignUsersToRepo(octokit, org, repo, userCache) {
 
         if (!isMember) {
           hasError = true;
-          logger.warn(`Skipping user ${user.name} in repo ${repo.name}: User is not a member of the org ${org}`);
+          logger.error(`Skipping user ${user.name} in repo ${repo.name}: User is not a member of the org ${org}`);
           continue;
         }
         await octokit.request('PUT /repos/{owner}/{repo}/collaborators/{username}', {
@@ -118,27 +91,12 @@ async function assignUsersToRepo(octokit, org, repo, userCache) {
 
 async function assignUsersAndTeams(octokit, org, repo, userCache) {
   logger.info(`assigning users and teams for repo ${repo.name}`);
-  await assignUsersToRepo(octokit, org, repo, userCache);
-  await assignTeamsToRepo(octokit, org, repo);
+  let hasError = await assignUsersToRepo(octokit, org, repo, userCache) 
+  hasError = await assignTeamsToRepo(octokit, org, repo) || hasError;
+  return hasError;
 }
 
-async function createRepo(octokit, org, repo, userCache) {
-  if (!repo || !repo.name) {
-    logger.error(`Invalid repo object: ${JSON.stringify(repo)}`);
-    return false;
-  }
-
-  if (!repo.users) {
-    repo.users = [];
-  }
-  if (!repo.teams) {
-    repo.teams = [];
-  }
-
-  if (repo.users.length === 0 && repo.teams.length === 0) {
-    logger.warn(`Repo ${repo.name} has no users or teams specified.`);
-    return false;
-  }
+async function createRepo(octokit, org, repo) {
 
   logger.info(`creating repo ${repo.name}`);
   try {
@@ -177,11 +135,12 @@ export async function createRepos(octokit, org, json) {
       if (created.success) {
         numCreated++;
         repoUrls.push(created.url);
-        await assignUsersAndTeams(octokit, org, repo, userCache);
+        hadFailures = await assignUsersAndTeams(octokit, org, repo, userCache) || hadFailures;
       } else {
         hadFailures = true;
       }
     } catch (error) {
+      hadFailures = true;
       logger.error({ err: error }, `Error creating repo ${repo.name}:`);
     }
   }

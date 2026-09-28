@@ -33,74 +33,6 @@ test('happy path', async () => {
   ]);
 });
 
-test('ignores additional repository fields', async () => {
-  const json = [{
-    name: 'example-repo',
-    description: 'must not be forwarded',
-    visibility: 'public',
-    arbitrary: { value: true },
-    users: [],
-    teams: [{ slug: 'developers', permission: 'admin', extra: 'ignored' }],
-  }];
-  const octokit = createMockOctokit();
-
-  await createRepos(octokit, 'example-org', json);
-
-  assert.deepEqual(octokit.calls, [
-    {
-      route: 'POST /orgs/{org}/repos',
-      parameters: {
-        org: 'example-org',
-        name: 'example-repo',
-        private: true,
-        headers: { ...GH_API_HEADER },
-      },
-    },
-    {
-      route: 'PUT /orgs/{org}/teams/{team_slug}/repos/{owner}/{repo}',
-      parameters: {
-        org: 'example-org',
-        team_slug: 'developers',
-        owner: 'example-org',
-        repo: 'example-repo',
-        permission: 'admin',
-        headers: { ...GH_API_HEADER  },
-      },
-    },
-  ]);
-});
-
-test('skips users and teams with unsupported permission values', async () => {
-  const json = [{
-    name: 'example-repo',
-    users: [{ name: 'octocat', permission: 'write' }],
-    teams: [{ slug: 'developers', permission: 'owner' }],
-  }];
-  const octokit = createMockOctokit();
-
-  await createRepos(octokit, 'example-org', json);
-
-  // only the repository creation call should be made, as the user and team permissions are unsupported
-  assert.deepEqual(octokit.calls.map(({ route }) => route), [
-    'POST /orgs/{org}/repos',
-  ]);
-});
-
-test('treats mixed-case permission values as invalid', async () => {
-  const json = [{
-    name: 'example-repo',
-    users: [{ name: 'octocat', permission: 'AdMiN' }],
-    teams: [{ slug: 'developers', permission: 'PuSh' }],
-  }];
-  const octokit = createMockOctokit();
-
-  await createRepos(octokit, 'example-org', json);
-
-  // only the repository creation call should be made, as the mixed-case permissions are treated as invalid
-  assert.deepEqual(octokit.calls.map(({ route }) => route), [
-    'POST /orgs/{org}/repos',
-  ]);
-});
 
 test('processes when users provided but teams not provided', async() =>{
   const json = [{
@@ -129,16 +61,6 @@ test('processes when teams provided but users not provided', async() =>{
     'POST /orgs/{org}/repos',
     'PUT /orgs/{org}/teams/{team_slug}/repos/{owner}/{repo}',
   ]);
-});
-
-test('does not create repo when both users and teams are not provided', async() =>{
-  const json = [{
-    name: 'example-repo',
-  }];
-  const octokit = createMockOctokit();
-  await createRepos(octokit, 'example-org', json);
-
-  assert.deepEqual(octokit.calls.map(({ route }) => route), []);
 });
 
 test('checks membership only once per user within a run', async () => {

@@ -4,6 +4,7 @@ import { parseArgs } from 'node:util';
 import { createOctokit } from './octokit.js';
 import { logger } from './logger.js';
 import { createRepos } from './repository-service.js';
+import { validateJSONFile } from './validation.js';
 
 dotenv.config();
 
@@ -90,15 +91,20 @@ async function main() {
     logger.info("***** Starting ******");
     logger.info(`Processing input file: ${inputFile}...`);
     try {
-      const octokit = createOctokit(token);
       const json = await loadJSON(inputFile);
+      logger.info(`Validating input file: ${inputFile}`);
+      validateJSONFile(json);
+      const octokit = createOctokit(token);
       const { repoUrls, hadFailures } = await createRepos(octokit, org, json);
       await writeRepoResultFile(repoUrls, outputFile);
       logger.info(`Finished creating repos from input file ${inputFile}`);
       if (hadFailures) {
+        console.error('Process had failures, check the logs for details.');
+        logger.error('Process had failures, check the logs for details.');
         process.exitCode = 1;
       }
     } catch (error) {
+      console.error(`Error creating repos from input file ${inputFile}: ${error.message}`);
       logger.error({ err: error }, `Error creating repos from input file ${inputFile}:`);
       process.exitCode = 1;
     }
