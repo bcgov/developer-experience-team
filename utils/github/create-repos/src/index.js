@@ -4,7 +4,6 @@ import { parseArgs } from 'node:util';
 import { createOctokit } from './octokit.js';
 import { logger } from './logger.js';
 import { createRepos } from './repository-service.js';
-import { readFile } from 'node:fs/promises';
 
 dotenv.config();
 
@@ -19,6 +18,10 @@ async function loadJSON(file) {
 }
 
 async function writeRepoResultFile(repoUrls, output) {
+  if (!repoUrls || repoUrls.length === 0) { 
+    logger.error('No repos were created, skipping writing result file.');
+    return;
+  }
   try {
     const filePath = output;
     await fs.writeFile(filePath, repoUrls.join('\n'), 'utf8');
@@ -64,8 +67,16 @@ async function main() {
       return;
     }
   
-    if (!inputFile || !(await fs.stat(inputFile)).isFile()) {
-      console.error('Error:  --input must be specified and must be a valid file.');
+    if (!inputFile) {
+      console.error('Error:  --input must be specified');
+      process.exitCode = 1;
+      return;
+    }
+
+    try {
+      (await fs.stat(inputFile)).isFile();
+    }catch (error) {  
+      console.error(`Error: Input file ${inputFile} is not accessible. Error: ${error.code} - ${error.message}`);
       process.exitCode = 1;
       return;
     }
@@ -81,9 +92,12 @@ async function main() {
     try {
       const octokit = createOctokit(token);
       const json = await loadJSON(inputFile);
-      const repoUrls = await createRepos(octokit, org, json);
+      const { repoUrls, hadFailures } = await createRepos(octokit, org, json);
       await writeRepoResultFile(repoUrls, outputFile);
       logger.info(`Finished creating repos from input file ${inputFile}`);
+      if (hadFailures) {
+        process.exitCode = 1;
+      }
     } catch (error) {
       logger.error({ err: error }, `Error creating repos from input file ${inputFile}:`);
       process.exitCode = 1;

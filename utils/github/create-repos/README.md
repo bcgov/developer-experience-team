@@ -5,7 +5,7 @@ This project automates the creation of GitHub repositories in an organization an
 ## Prerequisites
 
 - Node.js 26 or later
-- A GitHub fine grain personal access token with permissions:
+- A GitHub fine-grain personal access token with permissions:
   - Organization permissions:
     - Read access to members
   - Repository permissions:
@@ -45,6 +45,14 @@ This project automates the creation of GitHub repositories in an organization an
 
 The JSON file should be an array of repository objects. Each object can include a `name`, a `users` list, and a `teams` list.
 
+Structure:
+
+* `name` - The repo name. It must NOT contain the owner, org or url data
+* `users[].name` - The GitHub username
+* `users[].permission` - Refer to [Supported permissions](#supported-permissions) below
+* `teams[].slug` - The GitHub team slug, not the team name (e.g. `team-bravo` is the team slug for GitHub Team `Team Bravo`)
+* `teams[].permission` - Refer to [Supported permissions](#supported-permissions) below
+
 Example:
 
 ```json
@@ -56,7 +64,7 @@ Example:
       { "name": "user2", "permission": "push" }
     ],
     "teams": [
-      { "name": "team1", "permission": "maintain" }
+      { "slug": "team-bravo", "permission": "maintain" }
     ]
   }
 ]

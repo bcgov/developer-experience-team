@@ -12,6 +12,7 @@ export function createOctokit({
   baseUrl = 'https://api.github.com',
   timeZone = 'UTC',
   maxRateLimitRetries = 5,
+  maxSecondaryRateLimitRetries = 5,
 }) {
   return new ThrottledOctokit({
     auth: token,
@@ -36,11 +37,15 @@ export function createOctokit({
         }
         return false;
       },
-      onSecondaryRateLimit: (retryAfter, options, octokit) => {
+      onSecondaryRateLimit: (retryAfter, options, octokit, retryCount) => {
         octokit.log.warn(
           `SecondaryRateLimit detected for request ${options.method} ${options.url}. Retrying after ${retryAfter} seconds`
         );
-        return true;
+        if (retryCount < maxSecondaryRateLimitRetries) {
+          octokit.log.warn(`Retrying after ${retryAfter} seconds!`);
+          return true;
+        }
+        return false;
       },
     },
   });

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-
+import { constants } from 'http2'
+import { GH_API_HEADER } from '@bcgov/github-common';
 import { createRepos } from '../src/repository-service.js';
 
 function createMockOctokit() {
@@ -9,7 +10,7 @@ function createMockOctokit() {
     calls,
     request: async (route, parameters) => {
       calls.push({ route, parameters });
-      return { status: route.startsWith('POST ') ? 201 : 204 };
+      return  route.startsWith('POST ') ? {status: constants.HTTP_STATUS_CREATED, data: {html_url: 'https://example.com/repo'} } : {status: constants.HTTP_STATUS_NO_CONTENT} ;
     },
   };
 }
@@ -18,7 +19,7 @@ test('happy path', async () => {
   const json = [{
     name: 'example-repo',
     users: [{ name: 'octocat', permission: 'admin' }],
-    teams: [{ name: 'developers', permission: 'push' }],
+    teams: [{ slug: 'developers', permission: 'push' }],
   }];
   const octokit = createMockOctokit();
 
@@ -39,7 +40,7 @@ test('ignores additional repository fields', async () => {
     visibility: 'public',
     arbitrary: { value: true },
     users: [],
-    teams: [{ name: 'developers', permission: 'admin', extra: 'ignored' }],
+    teams: [{ slug: 'developers', permission: 'admin', extra: 'ignored' }],
   }];
   const octokit = createMockOctokit();
 
@@ -52,7 +53,7 @@ test('ignores additional repository fields', async () => {
         org: 'example-org',
         name: 'example-repo',
         private: true,
-        headers: { 'X-GitHub-Api-Version': '2026-03-10' },
+        headers: { ...GH_API_HEADER },
       },
     },
     {
@@ -63,7 +64,7 @@ test('ignores additional repository fields', async () => {
         owner: 'example-org',
         repo: 'example-repo',
         permission: 'admin',
-        headers: { 'X-GitHub-Api-Version': '2026-03-10' },
+        headers: { ...GH_API_HEADER  },
       },
     },
   ]);
@@ -73,7 +74,7 @@ test('skips users and teams with unsupported permission values', async () => {
   const json = [{
     name: 'example-repo',
     users: [{ name: 'octocat', permission: 'write' }],
-    teams: [{ name: 'developers', permission: 'owner' }],
+    teams: [{ slug: 'developers', permission: 'owner' }],
   }];
   const octokit = createMockOctokit();
 
@@ -89,7 +90,7 @@ test('treats mixed-case permission values as invalid', async () => {
   const json = [{
     name: 'example-repo',
     users: [{ name: 'octocat', permission: 'AdMiN' }],
-    teams: [{ name: 'developers', permission: 'PuSh' }],
+    teams: [{ slug: 'developers', permission: 'PuSh' }],
   }];
   const octokit = createMockOctokit();
 
@@ -119,7 +120,7 @@ test('processes when users provided but teams not provided', async() =>{
 test('processes when teams provided but users not provided', async() =>{
   const json = [{
     name: 'example-repo',
-    teams: [{ name: 'developers', permission: 'pull' }],
+    teams: [{ slug: 'developers', permission: 'pull' }],
   }];
   const octokit = createMockOctokit();
   await createRepos(octokit, 'example-org', json);
@@ -155,6 +156,29 @@ test('checks membership only once per user within a run', async () => {
     'PUT /repos/{owner}/{repo}/collaborators/{username}',
     'POST /orgs/{org}/repos',
     'PUT /repos/{owner}/{repo}/collaborators/{username}',
+  ]);
+});
+
+test('does not assign a collaborator when the membership check throws', async () => {
+  const json = [{
+    name: 'example-repo',
+    users: [{ name: 'octocat', permission: 'pull' }],
+  }];
+  const octokit = createMockOctokit();
+  const request = octokit.request;
+  octokit.request = async (route, parameters) => {
+    if (route === 'GET /orgs/{org}/members/{username}') {
+      octokit.calls.push({ route, parameters });
+      throw new Error('Membership check failed');
+    }
+    return request(route, parameters);
+  };
+
+  await createRepos(octokit, 'example-org', json);
+
+  assert.deepEqual(octokit.calls.map(({ route }) => route), [
+    'POST /orgs/{org}/repos',
+    'GET /orgs/{org}/members/{username}',
   ]);
 });
 
