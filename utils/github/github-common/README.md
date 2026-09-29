@@ -77,6 +77,7 @@ const octokit = createOctokit({
 - `baseUrl`: GitHub API URL; defaults to `https://api.github.com`.
 - `timeZone`: Request time zone; defaults to `UTC`.
 - `maxRateLimitRetries`: Number of primary rate-limit retries; defaults to `5`.
+- `maxSecondaryRateLimitRetries`: Number of secondary rate-limit retries; defaults to `5`.
 
 Use the shared GitHub API version header when making requests:
 
