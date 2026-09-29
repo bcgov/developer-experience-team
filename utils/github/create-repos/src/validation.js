@@ -15,7 +15,7 @@ const repoSchema = zod.array(zod.object({
     slug: zod.string(ERROR_TEAMS).min(1, ERROR_TEAMS),
     permission: zod.enum(VALID_PERMISSIONS, "Permission is required"),
   })).optional()
-}).refine((data) => data.users !== undefined || data.teams !== undefined, {
+}).refine((data) => (data.users?.length > 0 || data.teams?.length > 0), {
     message: "You must specify at least one user or team."
 }));
     

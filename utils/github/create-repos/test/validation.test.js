@@ -43,7 +43,7 @@ describe('validateJSONFile', () => {
         assertValidationError({ name: 'example-repo', users: [] }, []);
         });
 
-        test('rejects a missing or empty repository name', async (t) => {
+    test('rejects a missing or empty repository name', async (t) => {
         await t.test('missing name', () => {
             assertValidationError([{ users: [] }], [0, 'name']);
         });
@@ -55,6 +55,24 @@ describe('validateJSONFile', () => {
     test('requires at least one users or teams property', () => {
         assertValidationError(
             [{ name: 'example-repo' }],
+            [0],
+            'You must specify at least one user or team.'
+        );
+
+        assertValidationError(
+            [{ name: 'example-repo', users: [], teams: [] }],
+            [0],
+            'You must specify at least one user or team.'
+        );
+
+        assertValidationError(
+            [{ name: 'example-repo', users: [], }],
+            [0],
+            'You must specify at least one user or team.'
+        );
+
+        assertValidationError(
+            [{ name: 'example-repo', teams: [], }],
             [0],
             'You must specify at least one user or team.'
         );

@@ -19,10 +19,6 @@ async function loadJSON(file) {
 }
 
 async function writeRepoResultFile(repoUrls, output) {
-  if (!repoUrls || repoUrls.length === 0) { 
-    logger.error('No repos were created, skipping writing result file.');
-    return;
-  }
   try {
     const filePath = output;
     await fs.writeFile(filePath, repoUrls.join('\n'), 'utf8');
@@ -75,7 +71,9 @@ async function main() {
     }
 
     try {
-      (await fs.stat(inputFile)).isFile();
+      if (!(await fs.stat(inputFile)).isFile()) {
+        throw new Error(`Input path ${inputFile} is not a file.`);
+       }
     }catch (error) {  
       console.error(`Error: Input file ${inputFile} is not accessible. Error: ${error.code} - ${error.message}`);
       process.exitCode = 1;
