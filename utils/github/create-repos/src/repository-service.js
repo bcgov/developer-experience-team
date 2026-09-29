@@ -31,43 +31,11 @@ async function assignTeamsToRepo(octokit, org, repo) {
   return hasError;
 }
 
-async function checkUserMembership(octokit, org, username) {
-  try {
-    const results = await octokit.request('GET /orgs/{org}/members/{username}', {
-      org: org,
-      username: username,
-      headers: {
-        ...GH_API_HEADER,
-      }
-    });
-    return results?.status === constants.HTTP_STATUS_NO_CONTENT;
-  } catch (error) {
-    if (error.status === constants.HTTP_STATUS_NOT_FOUND) {
-      logger.error(`User ${username} not a GitHub member of org ${org}`);
-      return false;
-    }
-    throw error;
-  }
-}
-
-async function assignUsersToRepo(octokit, org, repo, userCache) {
+async function assignUsersToRepo(octokit, org, repo) {
   let hasError = false;
   for (const user of repo.users ?? []) {
     try {
-      let isMember;
-      if (userCache.has(user.name)) {
-        isMember = userCache.get(user.name);
-      } else {
-        isMember = await checkUserMembership(octokit, org, user.name);
-        userCache.set(user.name, isMember);
-      }
-
-      if (!isMember) {
-        hasError = true;
-        logger.error(`Skipping user ${user.name} in repo ${repo.name}: User is not a member of the org ${org}`);
-        continue;
-      }
-      await octokit.request('PUT /repos/{owner}/{repo}/collaborators/{username}', {
+      const result = await octokit.request('PUT /repos/{owner}/{repo}/collaborators/{username}', {
         owner: org,
         repo: repo.name,
         username: user.name,
@@ -76,7 +44,17 @@ async function assignUsersToRepo(octokit, org, repo, userCache) {
           ...GH_API_HEADER,
         },
       });
-      logger.info(`Assigned user ${user.name} to repo ${repo.name} with permission '${user.permission}'`);
+      
+      if(result?.status === constants.HTTP_STATUS_NO_CONTENT) {
+        logger.info(`Assigned user ${user.name} to repo ${repo.name} with permission '${user.permission}'`);
+      }else if(result?.status === constants.HTTP_STATUS_CREATED) {
+        hasError = true;
+        logger.error(`ERROR: Invited user ${user.name} as outside collaborator to repo ${repo.name}. CANCEL THEIR INVITE.`);
+      }else {
+        hasError = true;
+        logger.error({ err: error }, `Error assigning user ${user.name} to repo ${repo.name}:`);
+      }
+      
     } catch (error) {
       hasError = true;
       logger.error({ err: error }, `Error assigning user ${user.name} to repo ${repo.name}:`);
@@ -85,9 +63,9 @@ async function assignUsersToRepo(octokit, org, repo, userCache) {
   return hasError;
 }
 
-async function assignUsersAndTeams(octokit, org, repo, userCache) {
+async function assignUsersAndTeams(octokit, org, repo) {
   logger.info(`assigning users and teams for repo ${repo.name}`);
-  let hasError = await assignUsersToRepo(octokit, org, repo, userCache) 
+  let hasError = await assignUsersToRepo(octokit, org, repo) 
   hasError = await assignTeamsToRepo(octokit, org, repo) || hasError;
   return hasError;
 }
@@ -113,7 +91,7 @@ async function createRepo(octokit, org, repo) {
       return { success: false };
     }
   } catch (error) {
-    logger.error({ err: error }, `Error creating repo ${repo.name}:`);
+    logger.error({ err: error }, `Error creating repo: ${repo.name}`);
     return { success: false };
   }
 }
@@ -121,17 +99,16 @@ async function createRepo(octokit, org, repo) {
 
 export async function createRepos(octokit, org, json) {
   let numCreated = 0;
-  const userCache = new Map();
   const repoUrls = [];
   let hadFailures = false;
 
   for (const repo of json) {
     try {
-      const created = await createRepo(octokit, org, repo, userCache);
+      const created = await createRepo(octokit, org, repo);
       if (created.success) {
         numCreated++;
         repoUrls.push(created.url);
-        hadFailures = await assignUsersAndTeams(octokit, org, repo, userCache) || hadFailures;
+        hadFailures = await assignUsersAndTeams(octokit, org, repo) || hadFailures;
       } else {
         hadFailures = true;
       }

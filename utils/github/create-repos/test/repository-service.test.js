@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { constants } from 'http2'
-import { GH_API_HEADER } from '@bcgov/github-common';
 import { createRepos } from '../src/repository-service.js';
+import { logger } from '../src/logger.js';
 
 function createMockOctokit() {
   const calls = [];
@@ -27,7 +27,6 @@ test('happy path', async () => {
 
   assert.deepEqual(octokit.calls.map(({ route }) => route), [
     'POST /orgs/{org}/repos',
-    'GET /orgs/{org}/members/{username}',
     'PUT /repos/{owner}/{repo}/collaborators/{username}',
     'PUT /orgs/{org}/teams/{team_slug}/repos/{owner}/{repo}',
   ]);
@@ -44,7 +43,6 @@ test('processes when users provided but teams not provided', async() =>{
 
   assert.deepEqual(octokit.calls.map(({ route }) => route), [
     'POST /orgs/{org}/repos',
-    'GET /orgs/{org}/members/{username}',
     'PUT /repos/{owner}/{repo}/collaborators/{username}',
   ]);
 });
@@ -63,7 +61,25 @@ test('processes when teams provided but users not provided', async() =>{
   ]);
 });
 
-test('checks membership only once per user within a run', async () => {
+test('logs an error for an outside collaborator invitation', async (t) => {
+  const octokit = {
+    request: async () => { return { status: constants.HTTP_STATUS_CREATED, data: { html_url: 'https://example.com/repo' } }; }
+  };
+  const logError = t.mock.method(logger, 'error', () => {});
+
+  const result = await createRepos(octokit, 'example-org', [{
+    name: 'example-repo',
+    users: [{ name: 'outside-user', permission: 'pull' }],
+  }]);
+
+  assert.equal(result.hadFailures, true);
+  assert.equal(logError.mock.callCount(), 1);
+  assert.deepEqual(logError.mock.calls[0].arguments, [
+    'ERROR: Invited user outside-user as outside collaborator to repo example-repo. CANCEL THEIR INVITE.',
+  ]);
+});
+
+test('processes multiple repositories correctly', async () => {
   const json = [
     { name: 'example-repo', users: [{ name: 'octocat', permission: 'pull' }] },
     { name: 'example-repo-2', users: [{ name: 'octocat', permission: 'pull' }] },
@@ -74,50 +90,43 @@ test('checks membership only once per user within a run', async () => {
 
   assert.deepEqual(octokit.calls.map(({ route }) => route), [
     'POST /orgs/{org}/repos',
-    'GET /orgs/{org}/members/{username}',
     'PUT /repos/{owner}/{repo}/collaborators/{username}',
     'POST /orgs/{org}/repos',
     'PUT /repos/{owner}/{repo}/collaborators/{username}',
   ]);
 });
 
-test('does not assign a collaborator when the membership check throws', async () => {
-  const json = [{
-    name: 'example-repo',
-    users: [{ name: 'octocat', permission: 'pull' }],
-  }];
-  const octokit = createMockOctokit();
-  const request = octokit.request;
-  octokit.request = async (route, parameters) => {
-    if (route === 'GET /orgs/{org}/members/{username}') {
-      octokit.calls.push({ route, parameters });
-      throw new Error('Membership check failed');
-    }
-    return request(route, parameters);
+test('logs a 5xx error and continues processing the next repository', async (t) => {
+  const error = Object.assign(new Error('Internal Server Error'), { status: 500 });
+  const calls = [];
+  const octokit = {
+    calls,
+    request: async (route, parameters) => {
+      calls.push({ route, parameters });
+      if (parameters.name === 'failing-repo') {
+        throw error;
+      }
+      return { status: constants.HTTP_STATUS_CREATED, data: { html_url: 'https://example.com/successful-repo' } };
+    },
   };
+  const logError = t.mock.method(logger, 'error', () => {});
 
-  await createRepos(octokit, 'example-org', json);
-
-  assert.deepEqual(octokit.calls.map(({ route }) => route), [
-    'POST /orgs/{org}/repos',
-    'GET /orgs/{org}/members/{username}',
+  const result = await createRepos(octokit, 'example-org', [
+    { name: 'failing-repo' },
+    { name: 'successful-repo' },
   ]);
-});
 
-test('does not share the membership cache between runs', async () => {
-  const json = [{
-    name: 'example-repo',
-    users: [{ name: 'octocat', permission: 'pull' }],
-  }];
-  const octokit = createMockOctokit();
-
-  await createRepos(octokit, 'example-org', json);
-  octokit.calls.length = 0;
-  await createRepos(octokit, 'example-org', json);
-
-  assert.deepEqual(octokit.calls.map(({ route }) => route), [
-    'POST /orgs/{org}/repos',
-    'GET /orgs/{org}/members/{username}',
-    'PUT /repos/{owner}/{repo}/collaborators/{username}',
+  assert.deepEqual(calls.map(({ parameters }) => parameters.name), [
+    'failing-repo',
+    'successful-repo',
+  ]);
+  assert.deepEqual(result, {
+    repoUrls: ['https://example.com/successful-repo'],
+    hadFailures: true,
+  });
+  assert.equal(logError.mock.callCount(), 1);
+  assert.deepEqual(logError.mock.calls[0].arguments, [
+    { err: error },
+    'Error creating repo: failing-repo',
   ]);
 });

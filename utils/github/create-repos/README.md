@@ -1,6 +1,19 @@
 # GitHub Repository Creator
 
-This project automates the creation of private GitHub repositories in an organization and assigns users and teams to each repository with specific permissions. Input validation rejects the entire file if any repository has no users and no teams.
+This project automates the creation of private GitHub repositories in an organization and assigns users and teams to each repository with the stated permission. 
+
+The input file is validated before it is processed. The validation fails on any of the following:
+
+- User is not a member of the organization
+- Team does not exist in the organization
+- JSON file does not match the expected schema
+
+Check the log file for results and errors after the run completes.
+
+>[!WARNING]
+>Validation of a user's org membership and assignment of that user to a repo are seperate tasks. There is no option to combine as one transaction. This means between the valdiation and assignment it is possible the user was removed from the org. 
+>This means a user could be assigned to the repo as an outside collaborator. If this happens an error message is logged to the log file. The probability of this scenario is low.
+
 
 ## Prerequisites
 
@@ -43,7 +56,7 @@ This project automates the creation of private GitHub repositories in an organiz
 
 ### Input file format
 
-The JSON file should be an array of repository objects. Each object can include a `name`, a `users` list, and a `teams` list.
+The JSON file should be an array of repository objects. Each object must include a `name`, and either or both a `users` list, and a `teams` list.
 
 Structure:
 
@@ -84,13 +97,10 @@ Reference `permission` field in [Add or update team repository permissions](http
 
 ### Running
 
-Run the script with the organization name, an input JSON file that defines repositories, and an output file for the generated repository URLs:
-
 ```bash
 npm start -- --org <organization-name> --input <path-to-json> --output <path-to-results>
 ```
-
-The arguments can also be provided using their short aliases:
+**Arguments**
 
 - `--org`, `-o`: GitHub organization name.
 - `--input`, `-i`: Path to the input JSON file.
@@ -102,16 +112,12 @@ Example:
 npm start -- --org bcgov-c --input example.json --output results.txt
 ```
 
-You can also run the script directly with Node:
-
 ```bash
 node src/index.js --org bcgov-c --input example.json --output results.txt
 ```
 
-## Notes
+## Tests
 
-- Repositories are created as `private`.
-- A repository with no users and no teams is skipped.
-- Users are only assigned if they are already members of the target organization.
-- The script logs status messages as it processes organizations, repositories, users, and teams.
-
+```bash
+npm test
+```
