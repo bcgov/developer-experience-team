@@ -39,7 +39,7 @@ export function createOctokit({
       },
       onSecondaryRateLimit: (retryAfter, options, octokit, retryCount) => {
         octokit.log.warn(
-          `SecondaryRateLimit detected for request ${options.method} ${options.url}. Retrying after ${retryAfter} seconds`
+          `SecondaryRateLimit detected for request ${options.method} ${options.url}.`
         );
         if (retryCount < maxSecondaryRateLimitRetries) {
           octokit.log.warn(`Retrying after ${retryAfter} seconds!`);
