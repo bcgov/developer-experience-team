@@ -72,10 +72,10 @@ async function main() {
 
     try {
       if (!(await fs.stat(inputFile)).isFile()) {
-        throw new Error(`Input path ${inputFile} is not a file.`);
+        throw new Error(`not a file`);
        }
     }catch (error) {  
-      console.error(`Error: Input file ${inputFile} is not accessible. Error: ${error.code} - ${error.message}`);
+      console.error(`Error: Input file ${inputFile} - ${error.message}`);
       process.exitCode = 1;
       return;
     }
