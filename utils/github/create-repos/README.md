@@ -1,6 +1,6 @@
 # GitHub Repository Creator
 
-This project automates the creation of GitHub repositories in an organization and assigns users and teams to each repository with specific permissions. A repository with no users and no teams is skipped. Repo visibility is hard coded to 'private'.
+This project automates the creation of private GitHub repositories in an organization and assigns users and teams to each repository with specific permissions. Input validation rejects the entire file if any repository has no users and no teams.
 
 ## Prerequisites
 
