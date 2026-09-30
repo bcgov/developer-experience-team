@@ -30,8 +30,13 @@ export async function validateJSONFile(octokit, org, json) {
     throw result.error;   
   }
 
-  await validateUsers(octokit, org, result.data);
-  await validateTeams(octokit, org, result.data);
+  const teamCache = new Set();
+  const userCache = new Set();
+  for(const repo of result.data) {
+    await validateUsers(octokit, org, repo, userCache);
+    await validateTeams(octokit, org, repo, teamCache);
+  }
+
   return result.data;    
 }
 
@@ -47,11 +52,8 @@ async function validateTeamExists(octokit, org, team_slug) {
 
 }
 
-async function validateTeams(octokit, org, json ) {
-  const teamCache = new Set();
-  for (const { repo, team } of (json ?? []).flatMap((repo) =>
-    (repo.teams ?? []).map((team) => ({ repo, team }))
-  )) {
+async function validateTeams(octokit, org, repo, teamCache) {
+  for (const team of (repo.teams ?? [])) {
     try {
       if (!teamCache.has(team.slug)) {
         if (!await validateTeamExists(octokit, org, team.slug)) {
@@ -76,20 +78,17 @@ async function checkUserMembership(octokit, org, username) {
   return results?.status === constants.HTTP_STATUS_NO_CONTENT;
 }
 
-async function validateUsers(octokit, org, json) {
-  const userCache = new Set();
-  for (const { repo, user } of (json ?? []).flatMap((repo) =>
-    (repo.users ?? []).map((user) => ({ repo, user }))
-  )) {
-      try {
-        if (!userCache.has(user.name)) {
-          if (!await checkUserMembership(octokit, org, user.name)) {
-            throw Error(`User ${user.name} is not a member of the org ${org}`);
-          }
-          userCache.add(user.name);
+async function validateUsers(octokit, org, repo, userCache) {
+  for (const user of (repo.users ?? [])) {
+    try {
+      if (!userCache.has(user.name)) {
+        if (!await checkUserMembership(octokit, org, user.name)) {
+          throw Error(`User ${user.name} is not a member of the org ${org}`);
         }
-      } catch (error) {
-        throw Error(`Error validating user ${user.name} in repo ${repo.name}: ${error.message}`);
+        userCache.add(user.name);
       }
+    } catch (error) {
+      throw Error(`Error validating user ${user.name} in repo ${repo.name}: ${error.message}`);
+    }
   }
 }
