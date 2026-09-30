@@ -48,20 +48,16 @@ async function validateTeamExists(octokit, org, team_slug) {
 }
 
 async function validateTeams(octokit, org, json ) {
-  let teamCache = new Map();
+  const teamCache = new Set();
   for (const { repo, team } of (json ?? []).flatMap((repo) =>
     (repo.teams ?? []).map((team) => ({ repo, team }))
   )) {
     try {
-      let exists;
-      if (teamCache.has(team.slug)) {
-        exists = teamCache.get(team.slug);
-      } else {
-        exists = await validateTeamExists(octokit, org, team.slug);
-        teamCache.set(team.slug, exists);
-      }
-      if (!exists) {
-        throw Error(`Team ${team.slug} does not exist in the org ${org}`);
+      if (!teamCache.has(team.slug)) {
+        if (!await validateTeamExists(octokit, org, team.slug)) {
+          throw Error(`Team ${team.slug} does not exist in the org ${org}`);
+        }
+        teamCache.add(team.slug);
       }
     } catch (error) {
       throw Error(`Error validating team ${team.slug} in repo ${repo.name}: ${error.message}`);
@@ -81,18 +77,16 @@ async function checkUserMembership(octokit, org, username) {
 }
 
 async function validateUsers(octokit, org, json) {
-  let userCache = new Map();
+  const userCache = new Set();
   for (const { repo, user } of (json ?? []).flatMap((repo) =>
     (repo.users ?? []).map((user) => ({ repo, user }))
   )) {
       try {
         if (!userCache.has(user.name)) {
-          let isMember = await checkUserMembership(octokit, org, user.name);
-          if (!isMember) {
+          if (!await checkUserMembership(octokit, org, user.name)) {
             throw Error(`User ${user.name} is not a member of the org ${org}`);
-          }else {
-            userCache.set(user.name, isMember);
           }
+          userCache.add(user.name);
         }
       } catch (error) {
         throw Error(`Error validating user ${user.name} in repo ${repo.name}: ${error.message}`);
