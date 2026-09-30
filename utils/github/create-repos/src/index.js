@@ -18,10 +18,9 @@ async function loadJSON(file) {
   }
 }
 
-async function writeRepoResultFile(repoUrls, output) {
+async function writeRepoResultFile(repoUrls, fileHandle, filePath) {
   try {
-    const filePath = output;
-    await fs.writeFile(filePath, repoUrls.join("\n"), "utf8");
+    await fileHandle.writeFile(repoUrls.join("\n"), "utf8");
     logger.info(`Repo result file written to ${filePath}`);
   } catch (error) {
     logger.error({ err: error }, `Error writing repo result file:`);
@@ -36,13 +35,23 @@ async function processFile(org, inputFile, outputFile, token) {
   logger.info(`Validating input file: ${inputFile}`);
   const octokit = createOctokit(token);
   await validateJSONFile(octokit, org, json);
-  const { repoUrls, hadFailures } = await createRepos(octokit, org, json);
-  await writeRepoResultFile(repoUrls, outputFile);
-  logger.info(`Finished creating repos from input file ${inputFile}`);
-  if (hadFailures) {
-    throw new Error("ERROR: Process ran but had failures, check the logs for details.");
+  // Open output before any remote mutations so an unwritable path fails fast.
+  let fileHandle;
+  try {
+    fileHandle = await fs.open(outputFile, "w");
+  } catch (error) {
+    throw new Error(`Cannot open output file ${outputFile}: ${error.message}`);
   }
-  return;
+  try {
+    const { repoUrls, hadFailures } = await createRepos(octokit, org, json);
+    await writeRepoResultFile(repoUrls, fileHandle, outputFile);
+    logger.info(`Finished creating repos from input file ${inputFile}`);
+    if (hadFailures) {
+      throw new Error("ERROR: Process ran but had failures, check the logs for details.");
+    }
+  } finally {
+    await fileHandle.close();
+  }
 }
 
 async function main() {

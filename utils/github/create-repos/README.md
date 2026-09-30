@@ -12,7 +12,7 @@ Check the log file for results and errors after the run completes.
 
 >[!WARNING]
 >Validation of a user's org membership and assignment of that user to a repo are separate tasks. There is no option to combine them as one transaction. This means that between validation and assignment, it is possible the user was removed from the org.
->This means a user could be assigned to the repo as an outside collaborator. If this happens an error message is logged to the log file. The probability of this scenario is low.
+>This means a user could be assigned to the repo as an outside collaborator. The probability of this happening is low. If this happens the script attempts to cancel the invitation and logs whether it was successful or not.
 
 
 ## Prerequisites

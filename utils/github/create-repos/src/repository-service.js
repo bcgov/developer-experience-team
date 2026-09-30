@@ -31,6 +31,23 @@ async function assignTeamsToRepo(octokit, org, repo) {
   return hasError;
 }
 
+async function cancelInvitation(octokit, org, repo, invite_id, user) {
+  const result = await octokit.request('DELETE /repos/{owner}/{repo}/invitations/{invitation_id}', {
+    owner: org,
+    repo: repo.name,
+    invitation_id: invite_id,
+    headers: {
+      ...GH_API_HEADER,
+    }
+  });
+  if (result?.status !== constants.HTTP_STATUS_NO_CONTENT) {
+    throw new Error(`ERROR: Failed to cancel invitation for user ${user.name} on repo ${repo.name}. CANCEL INVITATION MANUALLY.`);
+  }else {
+    logger.info(`Successfully cancelled invitation for user ${user.name} on repo ${repo.name}`);
+  }
+}
+
+
 async function assignUsersToRepo(octokit, org, repo) {
   let hasError = false;
   for (const user of repo.users ?? []) {
@@ -48,16 +65,16 @@ async function assignUsersToRepo(octokit, org, repo) {
       if(result?.status === constants.HTTP_STATUS_NO_CONTENT) {
         logger.info(`Assigned user ${user.name} to repo ${repo.name} with permission '${user.permission}'`);
       }else if(result?.status === constants.HTTP_STATUS_CREATED) {
-        hasError = true;
-        logger.error(`ERROR: Invited user ${user.name} as outside collaborator to repo ${repo.name}. CANCEL THEIR INVITE.`);
+        logger.warn(`Warning: Invited user ${user.name} as outside collaborator to repo ${repo.name}. Attempting to cancel invitation...`);
+        await cancelInvitation(octokit, org, repo, result.data.id, user);
       }else {
         hasError = true;
-        logger.error({ err: error }, `Error assigning user ${user.name} to repo ${repo.name}:`);
+        logger.error({ err: error }, `Error assigning user ${user.name} to repo: ${repo.name}`);
       }
       
     } catch (error) {
       hasError = true;
-      logger.error({ err: error }, `Error assigning user ${user.name} to repo ${repo.name}:`);
+      logger.error({ err: error }, `Error assigning user ${user.name} to repo: ${repo.name}. Error ${error.message}`);
     }
   }
   return hasError;

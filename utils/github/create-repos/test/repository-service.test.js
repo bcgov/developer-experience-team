@@ -4,13 +4,18 @@ import { constants } from 'http2'
 import { createRepos } from '../src/repository-service.js';
 import { logger } from '../src/logger.js';
 
-function createMockOctokit() {
+function createMockOctokit(respond) {
   const calls = [];
+  const defaultRespond = (route) =>
+    route.startsWith('POST ')
+      ? { status: constants.HTTP_STATUS_CREATED, data: { html_url: 'https://example.com/repo' } }
+      : { status: constants.HTTP_STATUS_NO_CONTENT };
+
   return {
     calls,
     request: async (route, parameters) => {
       calls.push({ route, parameters });
-      return  route.startsWith('POST ') ? {status: constants.HTTP_STATUS_CREATED, data: {html_url: 'https://example.com/repo'} } : {status: constants.HTTP_STATUS_NO_CONTENT} ;
+      return (respond ?? defaultRespond)(route, parameters);
     },
   };
 }
@@ -61,10 +66,32 @@ test('processes when teams provided but users not provided', async() =>{
   ]);
 });
 
-test('logs an error for an outside collaborator invitation', async (t) => {
-  const octokit = {
-    request: async () => { return { status: constants.HTTP_STATUS_CREATED, data: { html_url: 'https://example.com/repo' } }; }
-  };
+test('removes outside collaborator invitation', async (t) => {
+  const octokit = createMockOctokit((route) =>
+    route.startsWith('DELETE ')
+      ? { status: constants.HTTP_STATUS_NO_CONTENT }
+      : { status: constants.HTTP_STATUS_CREATED, data: { id: 1, html_url: 'https://example.com/repo' } }
+  );
+
+  const result = await createRepos(octokit, 'example-org', [{
+    name: 'example-repo',
+    users: [{ name: 'outside-user', permission: 'pull' }],
+  }]);
+
+  assert.equal(result.hadFailures, false);
+  assert.deepEqual(octokit.calls.map(({ route }) => route), [
+  'POST /orgs/{org}/repos',
+  'PUT /repos/{owner}/{repo}/collaborators/{username}',
+  'DELETE /repos/{owner}/{repo}/invitations/{invitation_id}',
+  ]);
+});
+
+test('reports a failure when cancelling an outside collaborator invitation fails', async (t) => {
+  const octokit = createMockOctokit((route) =>
+    route.startsWith('DELETE ')
+      ? { status: constants.HTTP_STATUS_NOT_FOUND }
+      : { status: constants.HTTP_STATUS_CREATED, data: { id: 1, html_url: 'https://example.com/repo' } }
+  );
   const logError = t.mock.method(logger, 'error', () => {});
 
   const result = await createRepos(octokit, 'example-org', [{
@@ -73,10 +100,12 @@ test('logs an error for an outside collaborator invitation', async (t) => {
   }]);
 
   assert.equal(result.hadFailures, true);
-  assert.equal(logError.mock.callCount(), 1);
-  assert.deepEqual(logError.mock.calls[0].arguments, [
-    'ERROR: Invited user outside-user as outside collaborator to repo example-repo. CANCEL THEIR INVITE.',
+  assert.deepEqual(octokit.calls.map(({ route }) => route), [
+    'POST /orgs/{org}/repos',
+    'PUT /repos/{owner}/{repo}/collaborators/{username}',
+    'DELETE /repos/{owner}/{repo}/invitations/{invitation_id}',
   ]);
+  assert.equal(logError.mock.callCount(), 1);
 });
 
 test('processes multiple repositories correctly', async () => {
@@ -98,17 +127,12 @@ test('processes multiple repositories correctly', async () => {
 
 test('logs a 5xx error and continues processing the next repository', async (t) => {
   const error = Object.assign(new Error('Internal Server Error'), { status: 500 });
-  const calls = [];
-  const octokit = {
-    calls,
-    request: async (route, parameters) => {
-      calls.push({ route, parameters });
-      if (parameters.name === 'failing-repo') {
-        throw error;
-      }
-      return { status: constants.HTTP_STATUS_CREATED, data: { html_url: 'https://example.com/successful-repo' } };
-    },
-  };
+  const octokit = createMockOctokit((route, parameters) => {
+    if (parameters.name === 'failing-repo') {
+      throw error;
+    }
+    return { status: constants.HTTP_STATUS_CREATED, data: { html_url: 'https://example.com/successful-repo' } };
+  });
   const logError = t.mock.method(logger, 'error', () => {});
 
   const result = await createRepos(octokit, 'example-org', [
@@ -116,7 +140,7 @@ test('logs a 5xx error and continues processing the next repository', async (t) 
     { name: 'successful-repo' },
   ]);
 
-  assert.deepEqual(calls.map(({ parameters }) => parameters.name), [
+  assert.deepEqual(octokit.calls.map(({ parameters }) => parameters.name), [
     'failing-repo',
     'successful-repo',
   ]);
