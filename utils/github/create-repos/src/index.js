@@ -5,6 +5,7 @@ import { createOctokit } from "./octokit.js";
 import { logger } from "./logger.js";
 import { createRepos } from "./repository-service.js";
 import { validateJSONFile } from "./validation.js";
+import path from "node:path"; 
 
 dotenv.config();
 
@@ -32,8 +33,12 @@ async function processFile(org, inputFile, outputFile, token) {
   logger.info("***** Starting ******");
   logger.info(`Loading input file: ${inputFile}...`);
   const json = await loadJSON(inputFile);
-  logger.info(`Validating input file: ${inputFile}`);
   const octokit = createOctokit(token);
+  logger.info(`Validating input file: ${inputFile}`);
+  // Validate the JSON file before proceeding so we can fail fast if there are any issues.
+  // There is a very low probability that a team or user may be removed between the validation
+  // and the actual creation of the repositories. But there is a higher probability of the input 
+  // file being invalid. So we validate first.
   await validateJSONFile(octokit, org, json);
   // Open output before any remote mutations so an unwritable path fails fast.
   let fileHandle;
@@ -47,7 +52,9 @@ async function processFile(org, inputFile, outputFile, token) {
     await writeRepoResultFile(repoUrls, fileHandle, outputFile);
     logger.info(`Finished creating repos from input file ${inputFile}`);
     if (hadFailures) {
-      throw new Error("ERROR: Process ran but had failures, check the logs for details.");
+      throw new Error(
+        "ERROR: Process ran but had failures, check the logs for details.",
+      );
     }
   } finally {
     await fileHandle.close();
@@ -112,27 +119,15 @@ async function main() {
     return;
   }
 
-  try {
-    const inputPath = await fs.realpath(inputFile);
-    let outputPath;
-    try {
-      outputPath = await fs.realpath(outputFile);
-    } catch (error) {
-      if (error.code !== "ENOENT") {
-        throw error;
-      }
-    }
-    if (outputPath === inputPath) {
-      throw new Error("Input and output files must be different.");
-    }
-  } catch (error) {
-    console.error(`Error: ${error.message}`);
+  if (path.resolve(inputFile) === path.resolve(outputFile)) {
+    console.error("Error: Input and output files must be different.");
     process.exitCode = 1;
     return;
   }
 
   try {
     await processFile(org, inputFile, outputFile, token);
+    console.log(`Finished processing input file ${inputFile}. Output written to ${outputFile}. Check logs for details.`);
   } catch (error) {
     console.error(`Error: ${error.message}`);
     logger.error({ err: error }, `Error: ${error.message}`);

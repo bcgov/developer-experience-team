@@ -65,11 +65,14 @@ async function assignUsersToRepo(octokit, org, repo) {
       if(result?.status === constants.HTTP_STATUS_NO_CONTENT) {
         logger.info(`Assigned user ${user.name} to repo ${repo.name} with permission '${user.permission}'`);
       }else if(result?.status === constants.HTTP_STATUS_CREATED) {
+        // This could happen if the user was removed from the org between the time of validation and the actual assignment.
+        // This is a very low probablity event. But, the API lets us easily check for this scenario.
+        // If it happens, attempt to cancel the invitation, and if that fails log an error.
         logger.warn(`Warning: Invited user ${user.name} as outside collaborator to repo ${repo.name}. Attempting to cancel invitation...`);
         await cancelInvitation(octokit, org, repo, result.data.id, user);
       }else {
         hasError = true;
-        logger.error({ err: error }, `Error assigning user ${user.name} to repo: ${repo.name}`);
+        logger.error({ err: error }, `Error assigning user ${user.name} to repo: ${repo.name}. HTTP return status was: ${result?.status}`);
       }
       
     } catch (error) {
@@ -82,7 +85,7 @@ async function assignUsersToRepo(octokit, org, repo) {
 
 async function assignUsersAndTeams(octokit, org, repo) {
   logger.info(`assigning users and teams for repo ${repo.name}`);
-  let hasError = await assignUsersToRepo(octokit, org, repo) 
+  let hasError = await assignUsersToRepo(octokit, org, repo);
   hasError = await assignTeamsToRepo(octokit, org, repo) || hasError;
   return hasError;
 }
