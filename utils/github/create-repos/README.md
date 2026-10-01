@@ -19,6 +19,8 @@ Check the log file for results and errors after the run completes.
 
 - Node.js 26 or later
 - A GitHub fine-grain personal access token with permissions:
+  - Scoped to appropriate organization (bcgov-c)
+  - All repositories access
   - Organization permissions:
     - Read access to members
   - Repository permissions:
