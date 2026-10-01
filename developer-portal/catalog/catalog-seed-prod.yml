@@ -23,3 +23,6 @@ spec:
         - https://github.com/bcgov/itk-api-governance/blob/main/techdocs/api-style-guides/catalog-info.yaml
         - https://github.com/bcgov/itk-api-governance/blob/main/techdocs/sdx-api-standards/catalog-info.yaml
         - https://github.com/bcgov/efv-itk-docs/blob/main/catalog-info.yaml
+        - https://github.com/bcgov/connected-services-techdocs/blob/main/getting-started/catalog-info.yaml
+        - https://github.com/bcgov/connected-services-techdocs/blob/main/integration-toolkit/catalog-info.yaml
+        - https://github.com/bcgov/connected-services-techdocs/blob/main/secure-data-exchange/catalog-info.yaml
