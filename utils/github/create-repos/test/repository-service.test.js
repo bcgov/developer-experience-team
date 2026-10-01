@@ -78,7 +78,7 @@ test('removes outside collaborator invitation', async (t) => {
     users: [{ name: 'outside-user', permission: 'pull' }],
   }]);
 
-  assert.equal(result.hadFailures, false);
+  assert.equal(result.hadFailures, true);
   assert.deepEqual(octokit.calls.map(({ route }) => route), [
   'POST /orgs/{org}/repos',
   'PUT /repos/{owner}/{repo}/collaborators/{username}',
@@ -105,7 +105,7 @@ test('reports a failure when cancelling an outside collaborator invitation fails
     'PUT /repos/{owner}/{repo}/collaborators/{username}',
     'DELETE /repos/{owner}/{repo}/invitations/{invitation_id}',
   ]);
-  assert.equal(logError.mock.callCount(), 1);
+  assert.equal(logError.mock.callCount(), 2);
 });
 
 test('processes multiple repositories correctly', async () => {

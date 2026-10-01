@@ -68,11 +68,13 @@ async function assignUsersToRepo(octokit, org, repo) {
         // This could happen if the user was removed from the org between the time of validation and the actual assignment.
         // This is a very low probability event. But, the API lets us easily check for this scenario.
         // If it happens, attempt to cancel the invitation, and if that fails log an error.
-        logger.warn(`Warning: Invited user ${user.name} as outside collaborator to repo ${repo.name}. Attempting to cancel invitation...`);
+        // We'll mark as hasError so user knows there was an issue with the assignment.
+        hasError = true;
+        logger.error(`Error: Invited user ${user.name} as outside collaborator to repo ${repo.name}. Attempting to cancel invitation...`);
         await cancelInvitation(octokit, org, repo, result.data.id, user);
       }else {
         hasError = true;
-        logger.error({ err: error }, `Error assigning user ${user.name} to repo: ${repo.name}. HTTP return status was: ${result?.status}`);
+        logger.error(`Error assigning user ${user.name} to repo: ${repo.name}. HTTP return status was: ${result?.status}`);
       }
       
     } catch (error) {
