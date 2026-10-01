@@ -112,12 +112,19 @@ async function main() {
     return;
   }
 
- try {
-     const inputPath = await fs.realpath(inputFile);
-     let outputPath = await fs.realpath(outputFile);
-     if (outputPath === inputPath) {
-       throw new Error("Input and output files must be different.");
-     }
+  try {
+    const inputPath = await fs.realpath(inputFile);
+    let outputPath;
+    try {
+      outputPath = await fs.realpath(outputFile);
+    } catch (error) {
+      if (error.code !== "ENOENT") {
+        throw error;
+      }
+    }
+    if (outputPath === inputPath) {
+      throw new Error("Input and output files must be different.");
+    }
   } catch (error) {
     console.error(`Error: ${error.message}`);
     process.exitCode = 1;
