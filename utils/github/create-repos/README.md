@@ -56,6 +56,12 @@ Check the log file for results and errors after the run completes.
 
 ## Usage
 
+### Create Input file
+
+Optionally use the `.github/prompts/create-repos-input-file.prompt.md` prompt to create the required [JSON input file](#input-file-format).
+
+In the AI chat, type `/` and select `Create GitHub Repository Input JSON file`, then provide the repository names, team slug(s), username(s), permission, and output path. It validates the JSON structure using the `repoSchema` exported from the `validation.js` file.
+
 ### Input file format
 
 The JSON file should be an array of repository objects. Each object must include a `name`, and either or both a `users` list, and a `teams` list.

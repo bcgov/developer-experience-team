@@ -8,7 +8,7 @@ const ERROR_USERS = "name is required - it is the GitHub username";
 const ERROR_TEAMS = "slug is required - it is the GitHub team slug";
 const ERROR_STRICT = "Extra fields are not allowed";
   
-const repoSchema = zod.array(zod.object({
+export const repoSchema = zod.array(zod.object({
   name: zod.string().min(1),
   users: zod.array(zod.object({
     name: zod.string(ERROR_USERS).min(1, ERROR_USERS),
