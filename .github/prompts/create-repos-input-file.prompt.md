@@ -1,5 +1,5 @@
 ---
-name: Create GitHub Repository Input JSON file
+name: create github repository input JSON file
 description: Create a JSON input file assigning GitHub users and teams to a list of repositories. The input file is used with the utils/github/create-repos script.
 argument-hint: Provide repository names, users, team slugs, permissions, and output JSON path.
 agent: agent
@@ -30,6 +30,10 @@ Requirements:
 - Add every supplied user and team to each repository, preserving the supplied names and order. Do not duplicate an assignment within a repository.
 - Each user needs a GitHub username and permission; each team needs a team slug and permission. If one permission is explicitly given for all users and/or teams, apply it to those entries. If permissions differ, use the permission specified for each identity.
 - Supported permissions are `pull`, `triage`, `push`, `maintain`, and `admin`.
+- If a requested permission is 'read' it should be mapped to the supported `pull` permission.
+- If a requested permission is 'write' it should be mapped to the supported `push` permission.
+- Repository names must be unique within the input file.
+- Repository names must be alphanumeric and may include hyphens, periods, and underscores, but must not contain spaces or other special characters.
 - At least one user or team assignment is required for each repository. Omit an absent `users` or `teams` field; do not emit empty arrays or fields not shown in the input schema.
 - Use the output path specified by the user. If no path is specified, use the active JSON file only when it is inside `utils/github/create-repos`; otherwise ask for a path before editing.
 - If repository names, all user/team assignments, or required permissions are missing or ambiguous, ask for the missing information before editing.

@@ -9,7 +9,7 @@ const ERROR_TEAMS = "slug is required - it is the GitHub team slug";
 const ERROR_STRICT = "Extra fields are not allowed";
   
 export const repoSchema = zod.array(zod.object({
-  name: zod.string().min(1),
+  name: zod.string().min(1).regex(/^[\w\.\-]+$/, "Repository name must be alphanumeric and may include hyphens, periods, and underscores, but must not contain spaces or other special characters"),
   users: zod.array(zod.object({
     name: zod.string(ERROR_USERS).min(1, ERROR_USERS),
     permission: zod.enum(VALID_PERMISSIONS, "Permission is required"),

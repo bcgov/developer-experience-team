@@ -283,6 +283,54 @@ describe("validateJSONFile - JSON structure", () => {
       [0, "name"],
     );
   });
+
+  test("rejects repository names with invalid characters", async (t) => {
+    await t.test("contains space in repository name", async () => {
+      await assertValidationError(
+        octokit,
+        [
+          {
+            name: "example repo",
+            users: [{ name: "octocat", permission: "pull" }],
+          },
+        ],
+        [0, "name"],
+      );
+    });
+
+    await t.test("contains special character in repository name", async () => {
+      await assertValidationError(
+        octokit,
+        [
+          {
+            name: "example@repo",
+            users: [{ name: "octocat", permission: "pull" }],
+          },
+        ],
+        [0, "name"],
+      );
+    });
+  });
+
+  test("accepts repository name with valid special characters", async () => {
+    octokit = createMockOctokit({
+      "GET /orgs/{org}/members/{username}": () => ({
+        status: constants.HTTP_STATUS_NO_CONTENT,
+      }),
+    });
+
+    const json = [
+      {
+        name: "example-repo_12.3",
+        users: [{ name: "octocat", permission: "pull" }],
+      },
+    ];
+
+    assert.deepEqual(
+      await validateJSONFile(octokit, "example-org", json),
+      json,
+    );
+  });
 });
 
 describe("validateJSONFile - GitHub API validation", () => {
