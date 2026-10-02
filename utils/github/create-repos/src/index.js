@@ -1,0 +1,138 @@
+import dotenv from "dotenv";
+import fs from "node:fs/promises";
+import { parseArgs } from "node:util";
+import { createOctokit } from "./octokit.js";
+import { logger } from "./logger.js";
+import { createRepos } from "./repository-service.js";
+import { validateJSONFile } from "./validation.js";
+import path from "node:path"; 
+
+dotenv.config();
+
+async function loadJSON(file) {
+  try {
+    const data = await fs.readFile(file, "utf8");
+    return JSON.parse(data);
+  } catch (error) {
+    logger.error({ err: error }, `Error loading JSON from file ${file}:`);
+    throw error;
+  }
+}
+
+async function writeRepoResultFile(repoUrls, fileHandle, filePath) {
+  try {
+    await fileHandle.writeFile(repoUrls.join("\n"), "utf8");
+    logger.info(`Repo result file written to ${filePath}`);
+  } catch (error) {
+    logger.error({ err: error }, `Error writing repo result file:`);
+    throw error;
+  }
+}
+
+async function processFile(org, inputFile, outputFile, token) {
+  logger.info("***** Starting ******");
+  logger.info(`Loading input file: ${inputFile}...`);
+  const json = await loadJSON(inputFile);
+  const octokit = createOctokit(token);
+  logger.info(`Validating input file: ${inputFile}`);
+  // Validate the JSON file before proceeding so we can fail fast if there are any issues.
+  // There is a very low probability that a team or user may be removed between the validation
+  // and the actual creation of the repositories. But there is a higher probability of the input 
+  // file being invalid. So we validate first.
+  await validateJSONFile(octokit, org, json);
+  // Open output before any remote mutations so an unwritable path fails fast.
+  let fileHandle;
+  try {
+    fileHandle = await fs.open(outputFile, "w");
+  } catch (error) {
+    throw new Error(`Cannot open output file ${outputFile}: ${error.message}`);
+  }
+  try {
+    const { repoUrls, hadFailures } = await createRepos(octokit, org, json);
+    await writeRepoResultFile(repoUrls, fileHandle, outputFile);
+    logger.info(`Finished creating repos from input file ${inputFile}`);
+    if (hadFailures) {
+      throw new Error(
+        "ERROR: Process ran but had failures, check the logs for details.",
+      );
+    }
+  } finally {
+    await fileHandle.close();
+  }
+}
+
+async function main() {
+  const token = process.env.GITHUB_TOKEN;
+
+  if (!token) {
+    console.error("Error: GITHUB_TOKEN environment variable is required.");
+    process.exitCode = 1;
+    return;
+  }
+
+  const options = {
+    org: {
+      type: "string",
+      short: "o",
+    },
+    input: {
+      type: "string",
+      short: "i",
+    },
+    output: {
+      type: "string",
+      short: "u",
+    },
+  };
+  const { values } = parseArgs({
+    options,
+    strict: true,
+    allowPositionals: false,
+  });
+
+  const { org, input: inputFile, output: outputFile } = values;
+  if (!org) {
+    console.error("Error:  --org must be specified.");
+    process.exitCode = 1;
+    return;
+  }
+
+  if (!inputFile) {
+    console.error("Error:  --input must be specified");
+    process.exitCode = 1;
+    return;
+  }
+
+  try {
+    if (!(await fs.stat(inputFile)).isFile()) {
+      throw new Error(`not a file`);
+    }
+  } catch (error) {
+    console.error(`Error: Input file ${inputFile} - ${error.message}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  if (!outputFile) {
+    console.error("Error:  --output must be specified.");
+    process.exitCode = 1;
+    return;
+  }
+
+  if (path.resolve(inputFile) === path.resolve(outputFile)) {
+    console.error("Error: Input and output files must be different.");
+    process.exitCode = 1;
+    return;
+  }
+
+  try {
+    await processFile(org, inputFile, outputFile, token);
+    console.log(`Finished processing input file ${inputFile}. Output written to ${outputFile}. Check logs for details.`);
+  } catch (error) {
+    console.error(`Error: ${error.message}`);
+    logger.error({ err: error }, `Error: ${error.message}`);
+    process.exitCode = 1;
+  }
+}
+
+await main();

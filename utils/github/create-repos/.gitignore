@@ -1,0 +1,6 @@
+*.json
+*.txt
+*.csv
+!example.json
+!package.json
+!package-lock.json
