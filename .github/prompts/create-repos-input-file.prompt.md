@@ -35,7 +35,7 @@ Requirements:
 - Repository names must be unique within the input file.
 - Repository names must be alphanumeric and may include hyphens, periods, and underscores, but must not contain spaces or other special characters.
 - At least one user or team assignment is required for each repository. Omit an absent `users` or `teams` field; do not emit empty arrays or fields not shown in the input schema.
-- Use the output path specified by the user. If no path is specified, use the active JSON file only when it is inside `utils/github/create-repos`; otherwise ask for a path before editing.
+- Use the output path specified by the user. If no file path is specified prompt for a file path suggesting to create the file in the `utils/github/create-repos` directory.
 - If repository names, all user/team assignments, or required permissions are missing or ambiguous, ask for the missing information before editing.
 - Do not run the repository creation script or make GitHub API calls. This task only prepares the JSON input file.
 - Validate that each requested repository appears exactly once, and every requested user/team appears exactly once per applicable repository with the correct permission.
