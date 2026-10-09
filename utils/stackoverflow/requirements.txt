@@ -17,7 +17,7 @@ pycparser==2.22
 pyee==13.0.0
 PyGithub==2.6.1
 Pygments==2.19.2
-PyJWT==2.10.1
+PyJWT==2.15.0
 PyNaCl==1.5.0
 pytest==8.4.1
 python-dateutil==2.9.0.post0
