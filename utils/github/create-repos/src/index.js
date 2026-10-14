@@ -31,6 +31,7 @@ async function writeRepoResultFile(repoUrls, fileHandle, filePath) {
 
 async function processFile(org, inputFile, outputFile, token) {
   logger.info("***** Starting ******");
+  logger.info(`Will create repos in organization: ${org}`);
   logger.info(`Loading input file: ${inputFile}...`);
   const json = await loadJSON(inputFile);
   const octokit = createOctokit(token);
@@ -63,6 +64,7 @@ async function processFile(org, inputFile, outputFile, token) {
 
 async function main() {
   const token = process.env.GITHUB_TOKEN;
+  const org = "bcgov-c";
 
   if (!token) {
     console.error("Error: GITHUB_TOKEN environment variable is required.");
@@ -71,10 +73,6 @@ async function main() {
   }
 
   const options = {
-    org: {
-      type: "string",
-      short: "o",
-    },
     input: {
       type: "string",
       short: "i",
@@ -90,12 +88,7 @@ async function main() {
     allowPositionals: false,
   });
 
-  const { org, input: inputFile, output: outputFile } = values;
-  if (!org) {
-    console.error("Error:  --org must be specified.");
-    process.exitCode = 1;
-    return;
-  }
+  const { input: inputFile, output: outputFile } = values;
 
   if (!inputFile) {
     console.error("Error:  --input must be specified");

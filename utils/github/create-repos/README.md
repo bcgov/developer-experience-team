@@ -1,6 +1,6 @@
 # GitHub Repository Creator
 
-This project automates the creation of private GitHub repositories in an organization and assigns users and teams to each repository with the stated permission. 
+This project automates the creation of private GitHub repositories in the bcgov-c organization and assigns users and teams to each repository with the stated permission. 
 
 The input file is validated before it is processed. The validation fails on any of the following:
 
@@ -110,18 +110,17 @@ npm start -- --org <organization-name> --input <path-to-json> --output <path-to-
 ```
 **Arguments**
 
-- `--org`, `-o`: GitHub organization name.
 - `--input`, `-i`: Path to the input JSON file.
 - `--output`, `-u`: Path to the output file. Existing files are overwritten.
 
 Example:
 
 ```bash
-npm start -- --org bcgov-c --input example.json --output results.txt
+npm start --  --input example.json --output results.txt
 ```
 
 ```bash
-node src/index.js --org bcgov-c --input example.json --output results.txt
+node src/index.js --input example.json --output results.txt
 ```
 
 ## Tests
