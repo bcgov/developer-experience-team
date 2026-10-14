@@ -1,10 +1,9 @@
 ---
-name: create github repository input JSON file
+name: create-repos-input-file
 description: Create a JSON input file assigning GitHub users and teams to a list of repositories. The input file is used with the utils/github/create-repos script.
+disable-model-invocation: true
 argument-hint: Provide repository names, users, team slugs, permissions, and output JSON path.
-agent: agent
 ---
-
 Create or update a JSON input file for `utils/github/create-repos` using the repository names, users, team slugs, and permissions supplied in the request. Apply the supplied user and team assignments to every repository unless the request specifies different assignments for particular repositories.
 
 Use this input shape, with one object per repository. Include `users` and/or `teams` only when they have entries:
