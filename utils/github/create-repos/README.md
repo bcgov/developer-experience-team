@@ -58,9 +58,11 @@ Check the log file for results and errors after the run completes.
 
 ### Create Input file
 
-Optionally use the `.github/prompts/create-repos-input-file.prompt.md` prompt to create the required [JSON input file](#input-file-format).
+Optionally use the `.github/skills/create-repos-input-file` skill to create the required [JSON input file](#input-file-format).
 
-In the AI chat, type `/` and select `Create GitHub Repository Input JSON file`, then provide the repository names, team slug(s), username(s), permission, and output path. It validates the JSON structure using the `repoSchema` exported from the `validation.js` file.
+In the AI chat, type `/` and select `create-repos-input-file`, then provide the repository names, team slug(s), username(s), permission, and output path. It validates the JSON structure using the `repoSchema` exported from the `validation.js` file.
+
+Note: If you don't see the skill try reloading with the `/skills reload` command.
 
 ### Input file format
 
@@ -106,7 +108,7 @@ Reference `permission` field in [Add or update team repository permissions](http
 ### Running
 
 ```bash
-npm start -- --org <organization-name> --input <path-to-json> --output <path-to-results>
+npm start -- --input <path-to-json> --output <path-to-results>
 ```
 **Arguments**
 
