@@ -26,3 +26,4 @@ spec:
         - https://github.com/bcgov/connected-services-techdocs/blob/main/getting-started/catalog-info.yaml
         - https://github.com/bcgov/connected-services-techdocs/blob/main/integration-toolkit/catalog-info.yaml
         - https://github.com/bcgov/connected-services-techdocs/blob/main/secure-data-exchange/catalog-info.yaml
+        - https://github.com/bcgov/notify-techdocs/blob/main/catalog-info.yaml
