@@ -1,7 +1,0 @@
-.DS_Store
-node_modules/
-*.csv
-*.log
-*.bak
-*.xlsx
-run.sh

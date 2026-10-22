@@ -1,7 +1,0 @@
-certifi==2026.10.19
-charset-normalizer==3.3.2
-idna==3.7
-packaging==24.0
-requests==2.32.3
-rocketchat-API==1.32.0
-urllib3==2.2.1

@@ -1,9 +1,0 @@
-*.json
-so_exported_images*/
-*.pem
-__pycache__/
-*.log
-validation_report.md
-*.txt
-*.bak
-*.zip
