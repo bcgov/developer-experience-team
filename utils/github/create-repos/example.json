@@ -1,0 +1,30 @@
+[
+    {
+        "name": "example-repo-1",
+        "users": [{"name": "user1", "permission": "admin"}, {"name": "user2", "permission": "push"}],
+        "teams": [{"slug": "team1", "permission": "maintain"}, {"slug": "team2", "permission": "triage"}]
+    },
+    {
+        "name": "example-repo-2",
+        "users": [{"name": "user3", "permission": "pull"}, {"name": "user4", "permission": "push"}],
+        "teams": [{"slug": "team3", "permission": "admin"}, {"slug": "team4", "permission": "push"}]
+    },
+    {
+        "name": "example-repo-3",
+        "users":[],
+        "teams": [{"slug": "team5", "permission": "admin"}, {"slug": "team6", "permission": "push"}]
+    },
+    {
+        "name": "example-repo-4",
+        "users": [{"name": "user5", "permission": "admin"}, {"name": "user6", "permission": "push"}],
+        "teams": []
+    },
+    {
+        "name": "example-repo-5",
+        "teams": [{"slug": "team7", "permission": "admin"}, {"slug": "team8", "permission": "push"}]
+    },
+    {
+        "name": "example-repo-6",
+        "users": [{"name": "user9", "permission": "admin"}, {"name": "user10", "permission": "push"}]
+    }
+]
