@@ -94,13 +94,28 @@ jobs:
           MINIO_BUCKET: ${{ vars.MINIO_BUCKET }}
           MINIO_ALIAS: ${{ vars.MINIO_ALIAS }} 
         run: |
-          echo "installing MinIO client"
-          curl https://dl.min.io/client/mc/release/linux-amd64/mc \
-          --create-dirs \
-          -o $HOME/minio-binaries/mc
+          echo "Installing MinIO client"
 
-          chmod +x $HOME/minio-binaries/mc
-          export PATH=$PATH:$HOME/minio-binaries/
+          MC_RELEASE="RELEASE.2025-08-13T08-35-41Z"
+          MC_ASSET="mc.linux-amd64.${MC_RELEASE}"
+          MC_URL="https://github.com/minio/mc/releases/download/${MC_RELEASE}/${MC_ASSET}"
+          MC_SHA256="01f866e9c5f9b87c2b09116fa5d7c06695b106242d829a8bb32990c00312e891"
+
+          mkdir -p "$HOME/minio-binaries"
+
+          curl --fail --location --show-error --silent \
+            --retry 3 \
+            "$MC_URL" \
+            --output "$HOME/minio-binaries/mc"
+
+          echo "${MC_SHA256}  $HOME/minio-binaries/mc" | sha256sum --check
+
+          chmod +x "$HOME/minio-binaries/mc"
+          export PATH="$HOME/minio-binaries:$PATH"
+
+          mc --version
+
+          test -f android/app/build/outputs/bundle/release/app-release.aab
 
           mc alias set $MINIO_ALIAS $MINIO_ENDPOINT $MINIO_ACCESS_KEY_ID $MINIO_SECRET_ACCESS_KEY
           
@@ -217,6 +232,15 @@ jobs:
           # Set Build Number. Not worrying about storing to repo.
           agvtool new-version -all ${BUILD_NO}
 
+      - name: Check iOS build destinations
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks
+          xcodebuild \
+            -workspace "$PROJECT" \
+            -scheme "$SCHEME" \
+            -showdestinations
+
       - name: Build For Release
         run: |
           xcodebuild \
@@ -224,6 +248,7 @@ jobs:
           -scheme $SCHEME \
           -configuration Release \
           -sdk iphoneos \
+          -destination 'generic/platform=iOS' \
           -derivedDataPath $DATA_DIR \
           -archivePath ${DATA_DIR}/${ARCHIVE_NAME} \
           archive
