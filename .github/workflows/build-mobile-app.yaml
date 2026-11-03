@@ -103,52 +103,53 @@ jobs:
       # can download it.
       # If you want to keep the artifact private, consider using a different storage solution.
 
-      # - name: Upload Artifact
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: android-release
-      #     path: DevExMobileTestApp/android/app/build/outputs/bundle/release/app-release.aab
-      #     if-no-files-found: error
-      #     retention-days: 1
-
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release
+          path: DevExMobileTestApp/android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 1
+      
+      # Uncomment the following lines if you want to upload the build artifact to S3
       # This is an example using the common object storage (S3) accessed with MinIO client.
       # Note: Ensure object storage is set up and configured correctly in your repository secrets.        
       # This is using the common object storage and not AWS S3
-      - name: Upload to S3
-        env:
-          MINIO_ACCESS_KEY_ID: ${{ secrets.MINIO_ACCESS_KEY }}
-          MINIO_SECRET_ACCESS_KEY: ${{ secrets.MINIO_SECRET_KEY }}
-          MINIO_ENDPOINT: ${{ secrets.MINIO_ENDPOINT }} 
-          MINIO_BUCKET: ${{ vars.MINIO_BUCKET }}
-          MINIO_ALIAS: ${{ vars.MINIO_ALIAS }} 
-        run: |
-          echo "Installing MinIO client"
+      # - name: Upload to S3
+      #   env:
+      #     MINIO_ACCESS_KEY_ID: ${{ secrets.MINIO_ACCESS_KEY }}
+      #     MINIO_SECRET_ACCESS_KEY: ${{ secrets.MINIO_SECRET_KEY }}
+      #     MINIO_ENDPOINT: ${{ secrets.MINIO_ENDPOINT }} 
+      #     MINIO_BUCKET: ${{ vars.MINIO_BUCKET }}
+      #     MINIO_ALIAS: ${{ vars.MINIO_ALIAS }} 
+      #   run: |
+      #     echo "Installing MinIO client"
 
-          MC_RELEASE="RELEASE.2025-08-13T08-35-41Z"
-          MC_ASSET="mc.linux-amd64.${MC_RELEASE}"
-          MC_URL="https://github.com/minio/mc/releases/download/${MC_RELEASE}/${MC_ASSET}"
-          MC_SHA256="01f866e9c5f9b87c2b09116fa5d7c06695b106242d829a8bb32990c00312e891"
+      #     MC_RELEASE="RELEASE.2025-08-13T08-35-41Z"
+      #     MC_ASSET="mc.linux-amd64.${MC_RELEASE}"
+      #     MC_URL="https://github.com/minio/mc/releases/download/${MC_RELEASE}/${MC_ASSET}"
+      #     MC_SHA256="01f866e9c5f9b87c2b09116fa5d7c06695b106242d829a8bb32990c00312e891"
 
-          mkdir -p "$HOME/minio-binaries"
+      #     mkdir -p "$HOME/minio-binaries"
 
-          curl --fail --location --show-error --silent \
-            --retry 3 \
-            "$MC_URL" \
-            --output "$HOME/minio-binaries/mc"
+      #     curl --fail --location --show-error --silent \
+      #       --retry 3 \
+      #       "$MC_URL" \
+      #       --output "$HOME/minio-binaries/mc"
 
-          echo "${MC_SHA256}  $HOME/minio-binaries/mc" | sha256sum --check
+      #     echo "${MC_SHA256}  $HOME/minio-binaries/mc" | sha256sum --check
 
-          chmod +x "$HOME/minio-binaries/mc"
-          export PATH="$HOME/minio-binaries:$PATH"
+      #     chmod +x "$HOME/minio-binaries/mc"
+      #     export PATH="$HOME/minio-binaries:$PATH"
 
-          mc --version
+      #     mc --version
 
-          test -f android/app/build/outputs/bundle/release/app-release.aab
+      #     test -f android/app/build/outputs/bundle/release/app-release.aab
 
-          mc alias set $MINIO_ALIAS $MINIO_ENDPOINT $MINIO_ACCESS_KEY_ID $MINIO_SECRET_ACCESS_KEY
+      #     mc alias set $MINIO_ALIAS $MINIO_ENDPOINT $MINIO_ACCESS_KEY_ID $MINIO_SECRET_ACCESS_KEY
           
-          echo "Copying app-release.aab to MinIO bucket"
-          mc cp android/app/build/outputs/bundle/release/app-release.aab $MINIO_ALIAS/$MINIO_BUCKET/app-release.aab   
+      #     echo "Copying app-release.aab to MinIO bucket"
+      #     mc cp android/app/build/outputs/bundle/release/app-release.aab $MINIO_ALIAS/$MINIO_BUCKET/app-release.aab   
 
       # Uncomment the following lines if you want to push the build to bcgov's artifactory
       # Note: Ensure that the JFrog CLI is set up and configured correctly in your repository secrets.    
@@ -296,34 +297,34 @@ jobs:
       # can download it.
       # If you want to keep the artifact private, consider using a different storage solution.
 
-      # - name: Upload a Build Artifact
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: ios-release
-      #     path: DevExMobileTestApp/ios/${{ env.EXPORT_DIR }}
-      #     if-no-files-found: error
-      #     retention-days: 1
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-release
+          path: DevExMobileTestApp/ios/${{ env.EXPORT_DIR }}
+          if-no-files-found: error
+          retention-days: 1
 
      
-
+      # Uncomment the following lines if you want to upload the build artifact to S3
       # This is an example using the common object storage (S3) accessed with MinIO client.
       # Note: Ensure object storage is set up and configured correctly in your repository secrets.        
       # This is using the common object storage and not AWS S3
-      - name: Upload to S3
-        env:
-          MINIO_ACCESS_KEY_ID: ${{ secrets.MINIO_ACCESS_KEY }}
-          MINIO_SECRET_ACCESS_KEY: ${{ secrets.MINIO_SECRET_KEY }}
-          MINIO_ENDPOINT: ${{ secrets.MINIO_ENDPOINT }} 
-          MINIO_BUCKET: ${{ vars.MINIO_BUCKET }}
-          MINIO_ALIAS: ${{ vars.MINIO_ALIAS }} 
-        run: |
-          echo "installing MinIO client"
-          brew install minio/stable/mc
+      # - name: Upload to S3
+      #   env:
+      #     MINIO_ACCESS_KEY_ID: ${{ secrets.MINIO_ACCESS_KEY }}
+      #     MINIO_SECRET_ACCESS_KEY: ${{ secrets.MINIO_SECRET_KEY }}
+      #     MINIO_ENDPOINT: ${{ secrets.MINIO_ENDPOINT }} 
+      #     MINIO_BUCKET: ${{ vars.MINIO_BUCKET }}
+      #     MINIO_ALIAS: ${{ vars.MINIO_ALIAS }} 
+      #   run: |
+      #     echo "installing MinIO client"
+      #     brew install minio/stable/mc
 
-          mc alias set $MINIO_ALIAS $MINIO_ENDPOINT $MINIO_ACCESS_KEY_ID $MINIO_SECRET_ACCESS_KEY
+      #     mc alias set $MINIO_ALIAS $MINIO_ENDPOINT $MINIO_ACCESS_KEY_ID $MINIO_SECRET_ACCESS_KEY
           
-          echo "Copying $EXPORT_DIR"
-          mc mirror --overwrite --remove $EXPORT_DIR $MINIO_ALIAS/$MINIO_BUCKET/$EXPORT_DIR
+      #     echo "Copying $EXPORT_DIR"
+      #     mc mirror --overwrite --remove $EXPORT_DIR $MINIO_ALIAS/$MINIO_BUCKET/$EXPORT_DIR
           
       
       # Uncomment the following lines if you want to push the build to bcgov's artifactory
