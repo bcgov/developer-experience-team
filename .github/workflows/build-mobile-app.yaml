@@ -104,7 +104,7 @@ jobs:
       # If you want to keep the artifact private, consider using a different storage solution.
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: android-release
           path: DevExMobileTestApp/android/app/build/outputs/bundle/release/app-release.aab
@@ -298,7 +298,7 @@ jobs:
       # If you want to keep the artifact private, consider using a different storage solution.
 
       - name: Upload a Build Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: ios-release
           path: DevExMobileTestApp/ios/${{ env.EXPORT_DIR }}
