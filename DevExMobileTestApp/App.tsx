@@ -1,8 +1,12 @@
 import React, { Component } from 'react';
-import { StyleSheet, TouchableOpacity, Text, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, Text, View, ViewStyle } from 'react-native';
 
-class App extends Component {
-  state = {
+interface AppState {
+  count: number;
+}
+
+class App extends Component<object, AppState> {
+  state: AppState = {
     count: 0,
   };
 
@@ -31,13 +35,13 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
+  } as ViewStyle,
   button: {
     alignItems: 'center',
     backgroundColor: '#DDDDDD',
     padding: 10,
     marginBottom: 10,
-  },
+  } as ViewStyle,
 });
 
 export default App;

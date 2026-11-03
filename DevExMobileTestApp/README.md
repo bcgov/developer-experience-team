@@ -89,6 +89,81 @@ You've successfully run and modified your React Native App. :partying_face:
 - If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
 - If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
 
+# Dependency Upgrades
+
+This project uses AI-agent-driven automation for periodic React Native and npm package upgrades.
+
+## Automated Upgrade Workflow
+
+The upgrade process is split into two phases: **upgrade & validate**, then **review & create PR**.
+
+### Phase 1: Upgrade and Validate
+
+Ask Copilot to upgrade dependencies:
+```
+"Upgrade React Native in DevExMobileTestApp to the latest version"
+```
+
+Copilot will automatically:
+1. **Scan** current versions and identify upgrade targets
+2. **Baseline** pre-upgrade state (compile, tests, runtime)
+3. **Upgrade** packages in correct order (React Native → ecosystem → tooling → native managers)
+4. **Validate** TypeScript compilation, ESLint, Jest tests, iOS CocoaPods, Android Gradle
+5. **Report** completed changes with git branch and commit info
+
+### Phase 2: Local Testing and PR Creation
+
+After the upgrade is complete:
+
+1. **Test locally** (you test, not agent):
+   ```bash
+   git diff                         # Review changes
+   yarn ios                         # Test on iOS simulator
+   yarn android                     # Test on Android emulator
+   ```
+
+2. **Verify everything works** - Check both platforms for functionality
+
+3. **Approve and create PR** - Ask Copilot when ready:
+   ```
+   "Create a pull request for the React Native upgrade"
+   ```
+   
+   Copilot will:
+   - Organize commits in logical order
+   - Write detailed PR description
+   - Open PR on GitHub
+   - Add appropriate labels
+
+### Upgrade Sequence (Critical Order)
+1. React Native core + React (tightly coupled)
+2. React Native ecosystem (`@react-native/*` packages)
+3. Babel & TypeScript compiler toolchain
+4. Testing & linting tools (Jest, ESLint)
+5. Native managers (CocoaPods for iOS, Gradle for Android)
+
+### Manual Testing Commands
+After upgrade is complete, use these to test locally:
+```bash
+# Test iOS
+yarn ios                          # Build and run iOS simulator
+
+# Test Android
+yarn android                      # Build and run Android emulator
+
+# Run validations
+yarn tsc --noEmit                 # TypeScript check
+yarn lint                         # ESLint check
+yarn test                         # Run test suite
+```
+
+### Agent Instructions
+
+The upgrade workflow is defined in two instruction files, automatically loaded by agents:
+
+- **`.github/instructions/REACT_NATIVE_UPGRADE.instructions.md`** - Handles scanning, upgrading, and validating
+- **`.github/instructions/REACT_NATIVE_CREATE_PR.instructions.md`** - Handles PR creation after local testing
+
 # Troubleshooting
 
 If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
