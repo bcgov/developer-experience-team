@@ -42,6 +42,10 @@ both native projects, build them, and verify the app actually runs.
 - Inspect manifests, lockfiles, `.tool-versions`, native build files, and app CI.
   Include engine requirements, SDK selectors, and CI setup steps in the migration
   when they would otherwise disagree.
+- Declare only runtime versions the app is intended and able to support. Keep
+  package engine ranges aligned with React Native's requirements, the team's
+  local runtime selection, and CI; do not imply compatibility with unsupported
+  runtimes or leave the declared range broader than the tested support policy.
 - For native tools, establish compatibility across:
   - Node and the repository's package manager.
   - Ruby, Bundler, CocoaPods, xcodeproj, Xcode, and simulator runtimes.
@@ -92,14 +96,17 @@ both native projects, build them, and verify the app actually runs.
 4. Regenerate the existing lockfile through the package manager and inspect peer
    warnings. Resolve causes before considering narrow, justified resolutions.
    Do not add blanket overrides to force unsupported dependency combinations.
-5. Preserve shared React Native TypeScript configuration where possible. If new
-   library definitions or JSX types fail, first check compiler/type version
-   compatibility rather than copying the entire base config, adding casts, or
-   changing application behavior to conceal the errors.
-6. If Jest's React Native preset moves or becomes a separate package, follow the
-   target release's supported setup. Do not invent a preset, mock the entire
-   React Native module to manufacture a pass, add an unrelated DOM environment,
-   or suppress console errors. Keep test dependencies compatible with the runner.
+5. Preserve shared React Native TypeScript configuration by extending the
+  version-matched base and overriding only intentional app-specific settings.
+  If new library definitions or JSX types fail, first check compiler/type
+  version compatibility rather than copying the base config, adding casts, or
+  changing application behavior to conceal the errors.
+6. Follow the target release's supported Jest preset and keep test dependencies
+  compatible with the runner. Tests should exercise the real JavaScript
+  implementations under test; limit mocks to native or external boundaries that
+  cannot run in Jest. Do not replace an entire framework module, add an
+  unrelated environment, polyfill around a misconfigured test setup, or
+  suppress errors merely to manufacture a passing result.
 7. Remove experiments and unused setup files created during troubleshooting.
    Never edit installed dependency files as a purported persistent fix.
 
